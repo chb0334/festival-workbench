@@ -1,0 +1,8 @@
+# 截图与本地杂项，不进仓库
+shot_*.png
+*.png.bak
+.cloudstudio
+
+# Python 缓存
+__pycache__/
+*.pyc
