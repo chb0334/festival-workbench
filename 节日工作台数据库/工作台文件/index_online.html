@@ -321,6 +321,8 @@ function buildSidebar(){
   groups.forEach(function(g){
     var key=g[0], el=g[1], m=counts(key);
     var opts = uniq(["全部"].concat(Object.keys(m)));
+    // 平台栏固定保留这两个平台入口（暂无数据时显示 0，采到数据后自动累加）
+    if(key==="platform"){ ["花瓣网","西柚平台"].forEach(function(p){ if(opts.indexOf(p)<0) opts.push(p); }); }
     $("#"+el).innerHTML = opts.map(function(v){
       var val=v==="全部"?"":v, n=v==="全部"?DATA.length:(m[v]||0);
       var cls=["chip",state.filters[key]===val?"active":"",n===0&&v!=="全部"?"zero":""].filter(Boolean).join(" ");

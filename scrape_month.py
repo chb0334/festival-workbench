@@ -35,7 +35,7 @@ import requests
 from bs4 import BeautifulSoup
 
 HOLIDAYS = ["万圣节", "感恩节", "圣诞节", "复活节", "情人节", "独立日", "其他"]
-PLATFORMS = ["亚马逊", "独立站", "Pinterest", "TikTok", "Facebook", "Instagram", "Etsy", "其他"]
+PLATFORMS = ["亚马逊", "独立站", "Pinterest", "花瓣网", "西柚平台", "TikTok", "Facebook", "Instagram", "Etsy", "其他"]
 DESIGN_TYPES = ["盘子实拍图", "素材图", "平面设计稿", "包装周边", "场景图"]
 EVIDENCE_TYPES = ["月销量", "评论数", "点赞", "收藏", "转发", "Best Seller排名", "无"]
 
@@ -114,6 +114,109 @@ def parse_image_search(query, limit=20):
         src = img.get("src") or img.get("data-src") or ""
         alt = img.get("alt") or f"{query} {i+1}"
         out.append(_make_record(alt, "独立站", query, img=src if src.startswith("http") else ""))
+    return out
+
+
+def parse_huaban(query, limit=20):
+    """
+    花瓣网（huaban.com）采集：花瓣挂了腾讯 EdgeOne 人机验证，
+    纯 requests 会被 "Security Verification" 拦截。这里做三层尽力：
+      1) 直接请求搜索页（被拦则跳过）
+      2) 本机装有 playwright 时用无头浏览器再试一次
+    都失败则静默跳过，不影响其他来源。
+    """
+    out = []
+    q = requests.utils.quote(query)
+    url = f"https://huaban.com/search/?q={q}"
+    html = fetch(url)
+    # 被验证码拦截时返回的是一小段混淆 JS，通过标记识别
+    if html and "Security Verification" not in html and "EO_Bot_Ssid" not in html and len(html) > 5000:
+        soup = BeautifulSoup(html, "html.parser")
+        for i, a in enumerate(soup.select("a[href*='/pins/']")[:limit]):
+            title = a.get("title") or a.get_text(strip=True) or f"{query} 花瓣 {i+1}"
+            img = ""
+            im = a.find("img")
+            if im and (im.get("src") or "").startswith("http"):
+                img = im["src"]
+            rec = _make_record(title, "花瓣网", query, img=img)
+            rec["source_url"] = "https://huaban.com" + (a.get("href") or "")
+            out.append(rec)
+    if not out:
+        out = _huaban_playwright(query, limit)
+    if not out:
+        print("  ⚠ 花瓣网被人机验证拦截（腾讯 EdgeOne），已跳过，不影响其他来源。")
+    else:
+        print(f"  ✓ 花瓣网命中 {len(out)} 条")
+    return out
+
+
+def _huaban_playwright(query, limit=20):
+    """无头浏览器兜底：仅在运行环境装有 playwright 时生效。"""
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception:
+        return []
+    out = []
+    try:
+        with sync_playwright() as p:
+            b = p.chromium.launch(headless=True)
+            ctx = b.new_context(user_agent=HEADERS["User-Agent"], locale="zh-CN",
+                                viewport={"width": 1440, "height": 900})
+            page = ctx.new_page()
+            page.goto(f"https://huaban.com/search/?q={requests.utils.quote(query)}",
+                      timeout=45000)
+            page.wait_for_timeout(8000)
+            if "Security Verification" in page.title():
+                b.close()
+                return []
+            for i, a in enumerate(page.query_selector_all("a[href*='/pins/']")[:limit]):
+                title = (a.get_attribute("title") or a.inner_text() or f"{query} 花瓣 {i+1}").strip()
+                img = ""
+                im = a.query_selector("img")
+                if im:
+                    src = im.get_attribute("src") or ""
+                    if src.startswith("http"):
+                        img = src
+                rec = _make_record(title, "花瓣网", query, img=img)
+                href = a.get_attribute("href") or ""
+                rec["source_url"] = "https://huaban.com" + href
+                if title or img:
+                    out.append(rec)
+            b.close()
+    except Exception:
+        pass
+    return out
+
+
+def parse_xiyou(query, limit=20):
+    """
+    西柚平台采集（预留）：需在环境变量 XIYOU_BASE_URL 配置站点地址，
+    例如：export XIYOU_BASE_URL="https://www.xxxx.com"
+    未配置或抓取失败时静默跳过。拿到确切网址后可在此扩展专属解析逻辑。
+    """
+    base = os.environ.get("XIYOU_BASE_URL", "").rstrip("/")
+    if not base:
+        print("  ⚠ 西柚平台：未配置 XIYOU_BASE_URL，已跳过（把网址发给助手即可接入）。")
+        return []
+    out = []
+    html = fetch(f"{base}/search?q={requests.utils.quote(query)}")
+    if html:
+        soup = BeautifulSoup(html, "html.parser")
+        for i, a in enumerate(soup.select("a")[:limit * 3]):
+            txt = a.get_text(strip=True)
+            img = a.find("img")
+            src = (img.get("src") or img.get("data-src") or "") if img else ""
+            if (len(txt) >= 6 or src.startswith("http")) and len(out) < limit:
+                href = a.get("href") or ""
+                if href.startswith("/"):
+                    href = base + href
+                rec = _make_record(txt or f"{query} 西柚 {i+1}", "西柚平台", query, img=src)
+                rec["source_url"] = href
+                out.append(rec)
+    if not out:
+        print("  ⚠ 西柚平台抓取未命中（页面结构需专属解析），已跳过。")
+    else:
+        print(f"  ✓ 西柚平台命中 {len(out)} 条")
     return out
 
 
@@ -265,6 +368,8 @@ def run(year, month):
     for holiday, query in HOLIDAY_QUERIES.items():
         print(f"-- 节日：{holiday}（{query}）")
         records += parse_pinterest(query)
+        records += parse_huaban(query)
+        records += parse_xiyou(query)
         records += parse_etsy(query)
         records += parse_image_search(query)
         records += parse_amazon(query)
