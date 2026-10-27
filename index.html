@@ -42,6 +42,9 @@ button{font-family:inherit}
 .chip.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
 .chip .n{font-size:11px;opacity:.6;font-variant-numeric:tabular-nums}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+.year-group{flex-wrap:wrap}
+.month-pick{flex-basis:100%;display:flex;align-items:center;gap:8px;margin-top:4px;padding-left:2px}
+.month-pick .scope-label.sub{opacity:.8}
 .chips.vertical{flex-direction:column;align-items:stretch}
 .chips.vertical .chip{justify-content:space-between}
 .chips.vertical .chip.zero{opacity:.42}
@@ -191,11 +194,10 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
   <div data-page-node-id="Dx3YDVmMqALnUUHDeRrWih" class="top-stats" id="topStats"></div>
 </header>
 
-<div data-page-node-id="gwB5Bdb2xNEyn6V3HE7iSw" class="scopebar">
-  <div data-page-node-id="ug2P1SLDu5QVCNe40VUnU2" class="scope-group"><span data-page-node-id="rX6dck8IvnJfUyBH3VpMUC" class="scope-label"><!--pnid:4B405bLWsA4eOjp2soFqf9-->年份</span><div data-page-node-id="nxVth93xIomOos6Wr0Nl3L" class="chips" id="yearChips"></div></div>
-  <div data-page-node-id="8H6xx2ySgdEBel73ObKbkI" class="scope-group"><span data-page-node-id="B794K9z5cTC8TLoGJQi7ig" class="scope-label"><!--pnid:Qw8pzt3mso4q934U3Ltw27-->节日</span><div data-page-node-id="pEBcdVb0k8ngwV3G6iBOYk" class="chips" id="holidayChips"></div></div>
-  <div data-page-node-id="mnScopeGroup" class="scope-group"><span data-page-node-id="mnScopeLabel" class="scope-label"><!--pnid:mnMonth-->采集月份</span><div data-page-node-id="mnMonthChips" class="chips" id="monthChips"></div></div>
-</div>
+  <div data-page-node-id="gwB5Bdb2xNEyn6V3HE7iSw" class="scopebar">
+    <div data-page-node-id="ug2P1SLDu5QVCNe40VUnU2" class="scope-group year-group"><span data-page-node-id="rX6dck8IvnJfUyBH3VpMUC" class="scope-label"><!--pnid:4B405bLWsA4eOjp2soFqf9-->年份</span><div data-page-node-id="nxVth93xIomOos6Wr0Nl3L" class="chips" id="yearChips"></div><div class="month-pick" data-page-node-id="mnMonthPick"><span class="scope-label sub"><!--pnid:mnMonth-->月份</span><select data-page-node-id="mnMonthSelect" id="monthSelect"><option value="">全部月份</option></select></div></div>
+    <div data-page-node-id="8H6xx2ySgdEBel73ObKbkI" class="scope-group"><span data-page-node-id="B794K9z5cTC8TLoGJQi7ig" class="scope-label"><!--pnid:Qw8pzt3mso4q934U3Ltw27-->节日</span><div data-page-node-id="pEBcdVb0k8ngwV3G6iBOYk" class="chips" id="holidayChips"></div></div>
+  </div>
 
 <div data-page-node-id="Ez3stnIit8Aq4evYqqk0Px" class="layout">
   <aside data-page-node-id="ZyWrnMbd8Ewo2EOTWwEF7Z" class="sidebar">
@@ -308,9 +310,18 @@ function buildScope(){
   var holidays = uniq(DATA.map(function(d){return d.holiday;})).sort(function(a,b){var ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});
   $("#yearChips").innerHTML = ["全部"].concat(years).map(function(y){var v=y==="全部"?"":y;return '<button class="chip '+(state.filters.year===v?"active":"")+'" data-scope="year" data-v="'+esc(v)+'">'+esc(y)+'</button>';}).join("");
   $("#holidayChips").innerHTML = ["全部"].concat(holidays).map(function(h){var v=h==="全部"?"":h;return '<button class="chip '+(state.filters.holiday===v?"active":"")+'" data-scope="holiday" data-v="'+esc(v)+'">'+esc(h)+'</button>';}).join("");
-  var months = uniq(DATA.map(monthOf)).sort(function(a,b){var na=parseInt((a||"0").replace(/[^0-9]/g,""),10)||0, nb=parseInt((b||"0").replace(/[^0-9]/g,""),10)||0;return na-nb;});
-  $("#monthChips").innerHTML = ["全部"].concat(months).map(function(mo){var v=mo==="全部"?"":mo;return '<button class="chip '+(state.filters.month===v?"active":"")+'" data-scope="month" data-v="'+esc(v)+'">'+esc(mo)+'</button>';}).join("");
+  buildMonthOptions();
+  }
+function buildMonthOptions(){
+  var base = state.filters.year ? DATA.filter(function(d){return d.year===state.filters.year;}) : DATA;
+  var months = uniq(base.map(monthOf)).sort(function(a,b){var na=parseInt((a||"0").replace(/[^0-9]/g,""),10)||0, nb=parseInt((b||"0").replace(/[^0-9]/g,""),10)||0;return na-nb;});
+  if(state.filters.month && months.indexOf(state.filters.month)<0) state.filters.month="";
+  var sel=$("#monthSelect");
+  sel.innerHTML = ['<option value="">全部月份</option>'].concat(months.map(function(mo){
+    return '<option value="'+esc(mo)+'"'+(state.filters.month===mo?" selected":"")+'>'+esc(mo)+'</option>';
+  })).join("");
 }
+
 function counts(key){
   var m={};
   DATA.forEach(function(d){var v=d[key]||"未填";m[v]=(m[v]||0)+1;});
@@ -416,6 +427,7 @@ function bind(){
   });
   var st; $("#searchInput").addEventListener("input",function(e){clearTimeout(st);st=setTimeout(function(){state.filters.q=e.target.value.trim();refresh();},260);});
   $("#sortSelect").addEventListener("change",function(e){state.sort=e.target.value;refresh();});
+  $("#monthSelect").addEventListener("change",function(e){state.filters.month=e.target.value;refresh();});
   $("#evidenceOnly").addEventListener("change",function(e){state.filters.has_evidence=e.target.checked;refresh();});
   $("#pendingOnly").addEventListener("change",function(e){state.filters.pending=e.target.checked;refresh();});
   $("#btnReset").addEventListener("click",resetFilters);
