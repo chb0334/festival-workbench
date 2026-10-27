@@ -7,6 +7,8 @@
 #   1. 本仓库已开启 GitHub Pages（Settings → Pages → Source: Deploy from a branch → main → /root）
 #   2. 亚马逊硬证据需配置密钥：Settings → Secrets → 添加
 #      AMAZON_PA_API_KEY / AMAZON_PA_API_SECRET，否则亚马逊分支自动跳过。
+#   3. 西柚洞察（xydc.com）热销榜需登录态：Settings → Secrets → 添加
+#      XIYOU_COOKIE（微信扫码登录后的 Cookie 字符串），否则西柚分支自动跳过。
 #   3. cron 已设为每月 28 号（覆盖 2 月，避免"2 月没有 30 号"导致漏跑）。
 #   4. GitHub 在仓库 60 天无活动后会暂停定时任务，跑一次或 push 一下即恢复。
 
@@ -38,6 +40,7 @@ jobs:
         env:
           AMAZON_PA_API_KEY: ${{ secrets.AMAZON_PA_API_KEY }}
           AMAZON_PA_API_SECRET: ${{ secrets.AMAZON_PA_API_SECRET }}
+          XIYOU_COOKIE: ${{ secrets.XIYOU_COOKIE }}
         run: |
           YEAR=$(date -u +%Y)
           MONTH=$(date -u +%-m)
