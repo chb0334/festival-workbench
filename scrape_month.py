@@ -12,6 +12,10 @@
   - 亚马逊：反爬极强。有官方 PA-API 密钥（环境变量 AMAZON_PA_API_KEY /
     AMAZON_PA_API_SECRET）时走合规接口；无密钥时走网页尽力抓取（跨品类扩展，
     命中率低，且网页不公开月销量，证据只能是评论数/评分、tier 偏低）。
+  - 花瓣网（huaban.com）：挂了腾讯 EdgeOne 人机验证，纯请求/无头浏览器都常被拦，
+    命中率低，采不到时静默跳过。
+  - 西柚洞察（xydc.com）选品雷达热销榜：需登录态，配置环境变量 XIYOU_COOKIE
+    （微信扫码登录后的 Cookie）才能返回数据，否则返回登录墙、静默跳过。
 
 运行：
   python3.11 scrape_month.py --year 2026 --month 11
@@ -188,33 +192,82 @@ def _huaban_playwright(query, limit=20):
     return out
 
 
-def parse_xiyou(query, limit=20):
+def parse_xiyou(query, limit=30):
     """
-    西柚平台采集（预留）：需在环境变量 XIYOU_BASE_URL 配置站点地址，
-    例如：export XIYOU_BASE_URL="https://www.xxxx.com"
-    未配置或抓取失败时静默跳过。拿到确切网址后可在此扩展专属解析逻辑。
+    西柚洞察（xydc.com）选品雷达 · 热销榜（US）。
+
+    重要：该接口需要登录态 Cookie，未登录时返回的是登录墙（HTML）而非数据。
+    配置环境变量 XIYOU_COOKIE（浏览器微信扫码登录后的 Cookie 字符串）即可抓取；
+    在 GitHub Actions 里配成 secret 也能让每月自动采集生效。
+    未配置 / Cookie 失效时会静默跳过，不影响其他来源。
+
+    热销榜是全品类榜单，这里只保留标题含本节日关键词的商品，并映射回对应节日。
     """
-    base = os.environ.get("XIYOU_BASE_URL", "").rstrip("/")
-    if not base:
-        print("  ⚠ 西柚平台：未配置 XIYOU_BASE_URL，已跳过（把网址发给助手即可接入）。")
+    cookie = os.environ.get("XIYOU_COOKIE", "")
+    if not cookie:
+        print("  ⚠ 西柚平台：未配置 XIYOU_COOKIE（需微信扫码登录态），已跳过。")
         return []
+    h = dict(HEADERS)
+    h["Referer"] = "https://www.xydc.com/"
+    h["Cookie"] = cookie
+    h["Accept"] = "application/json, text/plain, */*"
     out = []
-    html = fetch(f"{base}/search?q={requests.utils.quote(query)}")
-    if html:
-        soup = BeautifulSoup(html, "html.parser")
-        for i, a in enumerate(soup.select("a")[:limit * 3]):
-            txt = a.get_text(strip=True)
-            img = a.find("img")
-            src = (img.get("src") or img.get("data-src") or "") if img else ""
-            if (len(txt) >= 6 or src.startswith("http")) and len(out) < limit:
-                href = a.get("href") or ""
-                if href.startswith("/"):
-                    href = base + href
-                rec = _make_record(txt or f"{query} 西柚 {i+1}", "西柚平台", query, img=src)
-                rec["source_url"] = href
-                out.append(rec)
+    try:
+        r = requests.get("https://insights.xydc.com/product-radar/hot-ranking/US",
+                         headers=h, timeout=25)
+        try:
+            j = r.json()
+        except Exception:
+            print("  ⚠ 西柚平台：返回非 JSON（Cookie 失效/未登录），已跳过。")
+            return []
+        # 兼容多种结构：直接是列表，或嵌套 data/list/result
+        items = j if isinstance(j, list) else (
+            j.get("data") or j.get("list") or j.get("result") or [])
+        if not isinstance(items, list):
+            items = []
+        kw = query.split()[0].lower()
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            title = (it.get("title") or it.get("name")
+                     or it.get("productTitle") or "")
+            asin = (it.get("asin") or it.get("productAsin")
+                    or it.get("Asin") or "")
+            img = (it.get("image") or it.get("imageUrl")
+                   or it.get("mainImage") or it.get("img") or "")
+            if isinstance(img, list):
+                img = img[0] if img else ""
+            # 只保留与本节日相关的热销品
+            if kw and kw not in (title + asin).lower():
+                continue
+            rec = _make_record(title or asin, "西柚平台", query,
+                               img=img if str(img).startswith("http") else "")
+            rec["asin"] = asin
+            rec["source_url"] = ("https://www.amazon.com/dp/" + asin
+                                 if asin else ("https://www.xydc.com/detail/product_radar"
+                                              "?xiyou-insights-web=%2Fproduct-radar%2Fhot-ranking%2FUS"))
+            sales = (it.get("sales") or it.get("salesVolume")
+                     or it.get("monthlySales") or it.get("gmv"))
+            rank = (it.get("rank") or it.get("hotRank") or it.get("ranking"))
+            if sales:
+                rec["evidence_type"] = "月销量"
+                rec["evidence_value"] = str(sales)
+                rec["tier"] = 4
+            elif rank:
+                rec["evidence_type"] = "Best Seller排名"
+                rec["evidence_value"] = str(rank)
+                rec["tier"] = 3
+            else:
+                rec["evidence_type"] = "无"
+                rec["tier"] = 1
+            out.append(rec)
+            if len(out) >= limit:
+                break
+    except Exception as e:
+        print(f"  ⚠ 西柚平台抓取异常：{e}")
+        return []
     if not out:
-        print("  ⚠ 西柚平台抓取未命中（页面结构需专属解析），已跳过。")
+        print("  ⚠ 西柚平台：未匹配到本节日相关热销品（或 Cookie 失效）。")
     else:
         print(f"  ✓ 西柚平台命中 {len(out)} 条")
     return out
