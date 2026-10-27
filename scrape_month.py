@@ -9,9 +9,9 @@
 
 数据源策略（诚实说明）：
   - Pinterest / 独立站 / Etsy / 图片搜索：相对好抓，适合补齐图库与空缺节日。
-  - 亚马逊：反爬强、且销量/评分等“硬证据”需官方 PA-API 密钥（环境变量
-    AMAZON_PA_API_KEY / AMAZON_PA_API_SECRET）。未配置密钥时自动跳过并告警，
-    不会产出缺证据的空数据。
+  - 亚马逊：反爬极强。有官方 PA-API 密钥（环境变量 AMAZON_PA_API_KEY /
+    AMAZON_PA_API_SECRET）时走合规接口；无密钥时走网页尽力抓取（跨品类扩展，
+    命中率低，且网页不公开月销量，证据只能是评论数/评分、tier 偏低）。
 
 运行：
   python3.11 scrape_month.py --year 2026 --month 11
@@ -117,20 +117,101 @@ def parse_image_search(query, limit=20):
     return out
 
 
-def parse_amazon_pa_api(query, limit=10):
+def parse_amazon(query, limit=10):
     """
-    亚马逊：必须有官方 PA-API 密钥才能合规拿到标题/价格/销量/评分。
-    未配置时返回空并告警（不产出缺证据的空数据）。
+    亚马逊采集：优先官方 PA-API（有密钥时），否则走网页尽力抓取。
+    网页抓取在反爬严格时可能命中很少甚至为 0（已做容错，不影响其他来源）。
+    注意：亚马逊网页不公开“月销量”，网页抓的证据只能是“评论数/评分”，tier 偏低。
     """
     key = os.environ.get("AMAZON_PA_API_KEY")
     secret = os.environ.get("AMAZON_PA_API_SECRET")
-    if not (key and secret):
-        print("  ⚠ 亚马逊未配置 PA-API 密钥，已跳过（不会产出缺证据数据）。")
+    if key and secret:
+        print("  … 亚马逊 PA-API 分支待接入（有密钥）。")
         return []
-    # TODO: 调用 Amazon Product Advertising API 5.0，按 query 检索并映射字段。
-    # 该分支需接入官方 SDK 与签名逻辑，此处留接口。
-    print("  … 亚马逊 PA-API 分支待接入（需密钥 + 签名）。")
-    return []
+    return parse_amazon_web(query, limit)
+
+
+# 跨品类扩展：不再只抓“盘子”，覆盖各类节日产品形态
+CATEGORIES = ["plates", "decorations", "ornaments", "table runner",
+              "doormat", "throw pillow", "lighting", "gift",
+              "banner", "wreath", "tablecloth", "centerpiece"]
+
+
+def _bing_amazon_asins(kw):
+    """用 Bing site:amazon.com 找商品 ASIN（含加密跳转解码尝试）。"""
+    asins = set()
+    try:
+        r = requests.get("https://www.bing.com/search?q=" +
+                         requests.utils.quote("site:amazon.com " + kw),
+                         headers=HEADERS, timeout=15)
+        asins |= set(re.findall(r"amazon\.com/(?:dp|gp/product)/([A-Z0-9]{10})", r.text))
+        import urllib.parse as _up
+        for c in re.findall(r"u=a1([^&\"]+)", r.text):
+            dec = _up.unquote(_up.unquote(c))
+            asins |= set(re.findall(r"amazon\.com/(?:dp|gp/product)/([A-Z0-9]{10})", dec))
+    except Exception:
+        pass
+    return asins
+
+
+def _parse_amazon_product(asin, holiday_query):
+    """解析单个亚马逊商品页：标题/评分/评论数/主图；失败返回 None。"""
+    try:
+        r = requests.get("https://www.amazon.com/dp/" + asin,
+                         headers=HEADERS, timeout=15)
+        if r.status_code != 200 or len(r.text) < 5000:   # 短页面=拦截页
+            return None
+        m = re.search(r'id="productTitle"[^>]*>([^<]+)<', r.text)
+        title = m.group(1).strip() if m else ""
+        if not title:
+            return None
+        rating = (re.search(r"([\d.]+)\s*out of 5", r.text) or [None, ""])[1]
+        reviews = (re.search(r"([\d,]+)\s*ratings?", r.text) or [None, ""])[1]
+        im = re.search(r'"large":"(https://m\.media-amazon\.com[^"]+)"', r.text)
+        img = im.group(1) if im else ""
+        if reviews:
+            ev_type, ev_val, tier = "评论数", reviews, 3
+        elif rating:
+            ev_type, ev_val, tier = "评分", rating, 2
+        else:
+            ev_type, ev_val, tier = "无", "", 1
+        rec = _make_record(title, "亚马逊", holiday_query, img=img)
+        rec.update({
+            "asin": asin,
+            "source_url": "https://www.amazon.com/dp/" + asin,
+            "evidence_type": ev_type,
+            "evidence_value": ev_val,
+            "evidence_note": ("网页抓取（无月销量，建议补 PA-API）"
+                             if ev_type != "无" else "网页抓取未获证据"),
+            "tier": tier,
+            "design_type": ("盘子实拍图" if "plate" in (title + holiday_query).lower()
+                            else "素材图"),
+        })
+        return rec
+    except Exception:
+        return None
+
+
+def parse_amazon_web(query, limit=10):
+    """网页尽力抓取：跨品类扩展 + 搜索引擎找链接 + 商品页解析，失败静默跳过。"""
+    out, seen = [], set()
+    for cat in CATEGORIES:
+        if len(out) >= limit:
+            break
+        kw = f"{query} {cat}"
+        for asin in _bing_amazon_asins(kw):
+            if asin in seen or len(out) >= limit:
+                continue
+            seen.add(asin)
+            rec = _parse_amazon_product(asin, query)
+            if rec:
+                out.append(rec)
+        time.sleep(1)
+    if not out:
+        print("  ⚠ 亚马逊网页抓取未命中（反爬拦截/网络限制），已跳过，不影响其他来源。")
+    else:
+        print(f"  ✓ 亚马逊网页抓取命中 {len(out)} 条")
+    return out
 
 
 def _make_record(title, platform, holiday_query, img="", thumb=""):
@@ -186,7 +267,7 @@ def run(year, month):
         records += parse_pinterest(query)
         records += parse_etsy(query)
         records += parse_image_search(query)
-        records += parse_amazon_pa_api(query)
+        records += parse_amazon(query)
         time.sleep(1)  # 礼貌限速
     # 统一打标
     for i, r in enumerate(records, 1):
