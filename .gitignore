@@ -6,3 +6,6 @@ shot_*.png
 # Python 缓存
 __pycache__/
 *.pyc
+
+# 花瓣网会话 cookie（含登录凭证，禁止提交）
+huaban_cookies.txt
