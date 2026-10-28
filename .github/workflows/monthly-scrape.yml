@@ -40,6 +40,7 @@ jobs:
         env:
           AMAZON_PA_API_KEY: ${{ secrets.AMAZON_PA_API_KEY }}
           AMAZON_PA_API_SECRET: ${{ secrets.AMAZON_PA_API_SECRET }}
+          AMAZON_LIMIT: ${{ vars.AMAZON_LIMIT }}
           XIYOU_COOKIE: ${{ secrets.XIYOU_COOKIE }}
         run: |
           YEAR=$(date -u +%Y)

@@ -33,6 +33,9 @@ import json
 import os
 import sys
 import time
+import re
+import random
+import urllib.parse
 from datetime import datetime
 
 import requests
@@ -61,6 +64,26 @@ HOLIDAY_QUERIES = {
     "独立日": "4th of july patriotic tableware",
     "其他": "festive holiday tableware",
 }
+
+# ---- 亚马逊网页抓取（加强版）配置 ----
+# 扩展品类词：覆盖节日产品的各种形态，提升 ASIN 发现覆盖
+PRODUCT_TERMS = [
+    "plates", "napkins", "tablecloth", "table runner", "placemats", "centerpiece",
+    "decorations", "decor", "wreath", "doormat", "throw pillow", "pillow cover",
+    "banner", "bunting", "garland", "string lights", "lights", "ornament", "figurine",
+    "gift bag", "gift wrap", "mug", "tumbler", "candle", "candle holder", "wall sign",
+    "garden flag", "yard sign", "inflatable", "gnome", "throw blanket", "kitchen towel",
+    "oven mitt", "apron", "serving tray", "bowl", "party supplies", "welcome mat",
+]
+# 每节日默认最多抓多少条（可用环境变量 AMAZON_LIMIT 覆盖，CI/本地都可调）
+DEFAULT_AMAZON_LIMIT = int(os.environ.get("AMAZON_LIMIT", "60"))
+# 反爬规避：轮换桌面 UA
+UA_POOL = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+]
 
 
 def now_tag():
@@ -273,96 +296,130 @@ def parse_xiyou(query, limit=30):
     return out
 
 
-def parse_amazon(query, limit=10):
+def parse_amazon(query, limit=DEFAULT_AMAZON_LIMIT):
     """
-    亚马逊采集：优先官方 PA-API（有密钥时），否则走网页尽力抓取。
+    亚马逊采集：优先官方 PA-API（有密钥且已接入时），否则走网页尽力抓取（加强版）。
     网页抓取在反爬严格时可能命中很少甚至为 0（已做容错，不影响其他来源）。
     注意：亚马逊网页不公开“月销量”，网页抓的证据只能是“评论数/评分”，tier 偏低。
+    想拿到月销量+批量，请接入 PA-API（见仓库说明）。
     """
     key = os.environ.get("AMAZON_PA_API_KEY")
     secret = os.environ.get("AMAZON_PA_API_SECRET")
     if key and secret:
-        print("  … 亚马逊 PA-API 分支待接入（有密钥）。")
-        return []
+        # 已配置 PA-API 密钥，但 PA-API 签名分支尚未实现：先退回网页抓取，避免丢数据。
+        # TODO: 实现 Amazon Product Advertising API 5.0（SigV4 签名）后在此调用。
+        print("  … 检测到 PA-API 密钥，但签名分支尚未实现，暂退回网页抓取。")
     return parse_amazon_web(query, limit)
 
 
-# 跨品类扩展：不再只抓“盘子”，覆盖各类节日产品形态
-CATEGORIES = ["plates", "decorations", "ornaments", "table runner",
-              "doormat", "throw pillow", "lighting", "gift",
-              "banner", "wreath", "tablecloth", "centerpiece"]
-
-
-def _bing_amazon_asins(kw):
-    """用 Bing site:amazon.com 找商品 ASIN（含加密跳转解码尝试）。"""
-    asins = set()
-    try:
-        r = requests.get("https://www.bing.com/search?q=" +
-                         requests.utils.quote("site:amazon.com " + kw),
-                         headers=HEADERS, timeout=15)
-        asins |= set(re.findall(r"amazon\.com/(?:dp|gp/product)/([A-Z0-9]{10})", r.text))
-        import urllib.parse as _up
-        for c in re.findall(r"u=a1([^&\"]+)", r.text):
-            dec = _up.unquote(_up.unquote(c))
+def _amazon_asin_from_html(text):
+    """从搜索结果 HTML 里抠 amazon 商品 ASIN（兼容搜索引擎的 uddg=/u= 跳转包裹）。"""
+    asins = set(re.findall(r"amazon\.com/(?:dp|gp/product)/([A-Z0-9]{10})", text))
+    for c in re.findall(r'(?:uddg|u)=([^&\"]+)', text):
+        try:
+            dec = urllib.parse.unquote(urllib.parse.unquote(c))
             asins |= set(re.findall(r"amazon\.com/(?:dp|gp/product)/([A-Z0-9]{10})", dec))
-    except Exception:
-        pass
+        except Exception:
+            pass
     return asins
 
 
-def _parse_amazon_product(asin, holiday_query):
-    """解析单个亚马逊商品页：标题/评分/评论数/主图；失败返回 None。"""
-    try:
-        r = requests.get("https://www.amazon.com/dp/" + asin,
-                         headers=HEADERS, timeout=15)
-        if r.status_code != 200 or len(r.text) < 5000:   # 短页面=拦截页
-            return None
-        m = re.search(r'id="productTitle"[^>]*>([^<]+)<', r.text)
-        title = m.group(1).strip() if m else ""
-        if not title:
-            return None
-        rating = (re.search(r"([\d.]+)\s*out of 5", r.text) or [None, ""])[1]
-        reviews = (re.search(r"([\d,]+)\s*ratings?", r.text) or [None, ""])[1]
-        im = re.search(r'"large":"(https://m\.media-amazon\.com[^"]+)"', r.text)
-        img = im.group(1) if im else ""
-        if reviews:
-            ev_type, ev_val, tier = "评论数", reviews, 3
-        elif rating:
-            ev_type, ev_val, tier = "评分", rating, 2
-        else:
-            ev_type, ev_val, tier = "无", "", 1
-        rec = _make_record(title, "亚马逊", holiday_query, img=img)
-        rec.update({
-            "asin": asin,
-            "source_url": "https://www.amazon.com/dp/" + asin,
-            "evidence_type": ev_type,
-            "evidence_value": ev_val,
-            "evidence_note": ("网页抓取（无月销量，建议补 PA-API）"
-                             if ev_type != "无" else "网页抓取未获证据"),
-            "tier": tier,
-            "design_type": ("盘子实拍图" if "plate" in (title + holiday_query).lower()
-                            else "素材图"),
-        })
-        return rec
-    except Exception:
-        return None
+def _discover_amazon_asins(kw, per_engine=30):
+    """多搜索引擎找 amazon 商品 ASIN：Google / Bing / DuckDuckGo / Startpage。
+    任一引擎返回足够即停，降低请求量与被封风险。"""
+    asins = set()
+    q = urllib.parse.quote("site:amazon.com " + kw)
+    engines = [
+        ("google",    f"https://www.google.com/search?num=30&q={q}"),
+        ("bing",      f"https://www.bing.com/search?q={q}"),
+        ("ddg",       f"https://html.duckduckgo.com/html/?q={q}"),
+        ("startpage", f"https://www.startpage.com/sp/search?query={q}"),
+    ]
+    for _name, url in engines:
+        try:
+            h = dict(HEADERS)
+            h["User-Agent"] = random.choice(UA_POOL)
+            r = requests.get(url, headers=h, timeout=15)
+            if r.status_code == 200 and len(r.text) > 1000:
+                asins |= _amazon_asin_from_html(r.text)
+                if len(asins) >= per_engine:
+                    break
+        except Exception:
+            pass
+        time.sleep(random.uniform(0.8, 1.8))
+    return asins
 
 
-def parse_amazon_web(query, limit=10):
-    """网页尽力抓取：跨品类扩展 + 搜索引擎找链接 + 商品页解析，失败静默跳过。"""
+def _parse_amazon_product(asin, holiday_query, tries=3):
+    """解析单个亚马逊商品页：标题/价格/评分/评论数/主图；带 UA 轮换+重试+反爬识别。"""
+    for t in range(tries):
+        try:
+            h = dict(HEADERS)
+            h["User-Agent"] = random.choice(UA_POOL)
+            h["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            h["Accept-Encoding"] = "gzip, deflate"
+            r = requests.get("https://www.amazon.com/dp/" + asin, headers=h, timeout=15)
+            if r.status_code != 200 or len(r.text) < 5000:   # 短页面=拦截页
+                time.sleep(1.5 * (t + 1))
+                continue
+            txt = r.text
+            if "Robot Check" in txt or "captcha" in txt.lower() or "To discuss automated access" in txt:
+                return None
+            m = re.search(r'id="productTitle"[^>]*>([^<]+)<', txt) or \
+                re.search(r'"title"\s*:\s*"([^"]{10,})"', txt)
+            title = m.group(1).strip() if m else ""
+            if not title or len(title) < 5:
+                return None
+            rating = (re.search(r"([\d.]+)\s*out of 5", txt) or [None, ""])[1]
+            reviews = (re.search(r"([\d,]+)\s*ratings?", txt) or [None, ""])[1]
+            price = (re.search(r'\$([\d,]+\.\d{2})', txt) or [None, ""])[1]
+            im = re.search(r'"large"\s*:\s*"(https://m\.media-amazon\.com[^"]+)"', txt) or \
+                 re.search(r'data-old-hires="(https://[^"]+?\.jpg)"', txt) or \
+                 re.search(r'"hiRes"\s*:\s*"(https://[^"]+?\.jpg)"', txt)
+            img = im.group(1) if im else ""
+            if reviews:
+                ev_type, ev_val, tier = "评论数", reviews, 3
+            elif rating:
+                ev_type, ev_val, tier = "评分", rating, 2
+            else:
+                ev_type, ev_val, tier = "无", "", 1
+            rec = _make_record(title, "亚马逊", holiday_query, img=img)
+            rec.update({
+                "asin": asin,
+                "source_url": "https://www.amazon.com/dp/" + asin,
+                "price": ("$" + price) if price else "",
+                "evidence_type": ev_type,
+                "evidence_value": ev_val,
+                "evidence_note": ("网页抓取（无月销量，建议补 PA-API）"
+                                 if ev_type != "无" else "网页抓取未获证据"),
+                "tier": tier,
+                "design_type": ("盘子实拍图" if "plate" in (title + holiday_query).lower()
+                                else "素材图"),
+            })
+            return rec
+        except Exception:
+            time.sleep(1.5 * (t + 1))
+    return None
+
+
+def parse_amazon_web(query, limit=DEFAULT_AMAZON_LIMIT):
+    """网页尽力抓取（加强版）：多引擎找 ASIN + 解析商品页 + 反爬规避。
+    无 PA-API 时的最佳尽力方案：能拉到标题/价格/评分/评论/主图，但拿不到月销量，
+    且受亚马逊反爬限制，量有天花板。失败静默跳过。"""
     out, seen = [], set()
-    for cat in CATEGORIES:
+    queries = [f"{query} {term}" for term in PRODUCT_TERMS]
+    random.shuffle(queries)
+    for kw in queries:
         if len(out) >= limit:
             break
-        kw = f"{query} {cat}"
-        for asin in _bing_amazon_asins(kw):
+        for asin in _discover_amazon_asins(kw):
             if asin in seen or len(out) >= limit:
                 continue
             seen.add(asin)
             rec = _parse_amazon_product(asin, query)
             if rec:
                 out.append(rec)
-        time.sleep(1)
+        time.sleep(random.uniform(0.5, 1.5))
     if not out:
         print("  ⚠ 亚马逊网页抓取未命中（反爬拦截/网络限制），已跳过，不影响其他来源。")
     else:
