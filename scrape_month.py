@@ -155,26 +155,23 @@ SHOPIFY_STORES = [
     "brooklinen.com", "parachutehome.com", "allbirds.com",
 ]
 
-# 节日关键词（英文，匹配 Shopify 商品标题/类型/标签/品牌）
-# 只保留“节日专属”词，剔除 holiday/winter/festive/autumn/love 等泛义词，避免跨节错归。
-HOLIDAY_KEYWORDS = {
-    "万圣节": ["halloween", "hallowe'en", "haunted", "pumpkin", "skeleton",
-               "ghost", "witch", "spider", "spooky", "monster", "skull",
-               "zombie", "boo", "bat", "mummy", "vampire", "graveyard",
-               "cobweb", "cauldron", "candy corn", "jack-o", "jack o",
-               "creepy", "frankenstein", "werewolf"],
-    "感恩节": ["thanksgiving", "turkey", "harvest", "gourd", "pilgrim",
-               "cornucopia", "thankful"],
-    "圣诞节": ["christmas", "xmas", "santa", "reindeer", "ornament", "wreath",
-               "snowman", "advent", "nutcracker", "gingerbread", "elf",
-               "sleigh", "tinsel", "poinsettia", "mistletoe", "stocking",
-               "santa claus", "christmas tree", "noel", "grinch"],
-    "复活节": ["easter", "bunny", "easter egg", "pastel"],
-    "情人节": ["valentine", "valentines", "be mine", "love heart"],
-    "独立日": ["4th of july", "july 4", "patriotic", "independence day",
-               "american flag", "stars and stripes", "star spangled",
-               "fireworks", "usa flag", "red white blue"],
+# 独立站归类：聚焦"节日餐具/杯具/器皿"竞品。
+# 必须同时命中 (1) 节日核心名 + (2) 餐具品类词，才归入对应节日。
+# 例：halloween + plates -> 万圣节；christmas + cups -> 圣诞节。
+HOLIDAY_BASE = {
+    "万圣节": ["halloween", "hallowe'en"],
+    "圣诞节": ["christmas", "xmas"],
+    "感恩节": ["thanksgiving"],
+    "独立日": ["4th of july", "july 4", "patriotic", "independence day"],
+    "复活节": ["easter"],
+    "情人节": ["valentine", "valentines"],
 }
+# 餐具品类词：用户指定 plates/cups/cutlery，并扩展覆盖 Shopify 派对餐具店
+# 真实用词（napkins/bowls/table setting/tableware 等），含单复数。
+INDEP_CATS = ["plate", "plates", "cup", "cups", "cutlery", "napkin", "napkins",
+              "bowl", "bowls", "tableware", "table setting", "table for",
+              "place card", "place cards", "dinnerware", "serveware", "mug",
+              "mugs", "straw", "straws", "dish", "dishes", "flatware"]
 
 
 def _hit(low, kw):
@@ -183,22 +180,15 @@ def _hit(low, kw):
 
 
 def _classify_independent(text):
-    """独立站商品归类（修正版）：
-    1) 先把明显属于其他节日的截走，修正万圣节优先级抢占导致的错归；
-    2) 再判定万圣节（专属词 或 costume，costume 是万圣节核心品类）；
-    3) 无节日信号的泛品返回 None，不录入。
-    依赖 title+product_type+vendor+tags 完整 blob，比 reclassify 脚本多
-    product_type/vendor 信号，能保留靠类型归类的真节日商品。"""
+    """独立站归类（聚焦节日餐具竞品）：必须同时命中 节日核心名 + 餐具品类词。
+    依赖 title+product_type+vendor+tags 完整 blob。"""
     low = " " + (text or "").lower() + " "
-    for holiday in ["圣诞节", "感恩节", "独立日", "复活节", "情人节"]:
-        for kw in HOLIDAY_KEYWORDS[holiday]:
-            if _hit(low, kw):
+    if not any(_hit(low, c) for c in INDEP_CATS):
+        return None
+    for holiday in ["万圣节", "圣诞节", "感恩节", "独立日", "复活节", "情人节"]:
+        for base in HOLIDAY_BASE[holiday]:
+            if _hit(low, base):
                 return holiday
-    for kw in HOLIDAY_KEYWORDS["万圣节"]:
-        if _hit(low, kw):
-            return "万圣节"
-    if _hit(low, "costume") or _hit(low, "costumes"):
-        return "万圣节"
     return None
 
 

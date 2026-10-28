@@ -1,18 +1,15 @@
 #!/usr/bin/env python3.11
 # -*- coding: utf-8 -*-
 """
-独立站数据重分类（精准修正版）。
+独立站重分类 v2：聚焦"节日餐具/杯具/器皿"竞品。
 
-只处理「被误标为万圣节」的独立站记录，其他节日标签原样保留——
-因为原采集靠 Shopify 的 product_type/vendor 字段归类，那些字段没存进
-index.html，全量重分类会误删靠 product_type 归类的真节日商品。
+判定规则（用户指定）：商品必须同时命中
+  (1) 节日核心名  +  (2) 餐具品类词(plates/cups/cutlery)
+才归入对应节日；否则不收录（剔除）。
+例：halloween + plates -> 万圣节；christmas + cups -> 圣诞节。
 
-对 holiday=="万圣节" 的记录：
-  1. 若含其他节日专属强词(christmas/thanksgiving/new year/easter/valentine…)
-     -> 改到该节日（修正被万圣节优先级抢占的错误）
-  2. 否则若含万圣节专属词 或 costume -> 保留为万圣节
-     （costume 是万圣节核心品类，Star Wars/Mickey 等角色服作为万圣节竞品保留）
-  3. 否则（无万圣词、无 costume、无其他节日词）-> 剔除（泛品/非节日）
+目的：把独立站从"泛节日商品"收窄到"节日 + 餐具/杯具/器皿"类竞品，
+与工作台餐具类节日竞品主线一致，并彻底避免 costume/装饰品串味。
 
 用法：
   python3.11 reclassify_independent.py            # 仅打印统计（dry-run）
@@ -24,46 +21,41 @@ import json
 
 INDEX = "/workspace/index.html"
 
-HOLIDAY_KW = {
-    "万圣节": ["halloween", "hallowe'en", "haunted", "pumpkin", "skeleton",
-               "ghost", "witch", "spider", "spooky", "monster", "skull",
-               "zombie", "boo", "bat", "mummy", "vampire", "graveyard",
-               "cobweb", "cauldron", "candy corn", "jack-o", "jack o",
-               "creepy", "frankenstein", "werewolf"],
-    "圣诞节": ["christmas", "xmas", "santa", "reindeer", "ornament", "wreath",
-               "snowman", "advent", "nutcracker", "gingerbread", "elf",
-               "sleigh", "tinsel", "poinsettia", "mistletoe", "stocking",
-               "santa claus", "christmas tree", "noel", "grinch"],
-    "感恩节": ["thanksgiving", "turkey", "harvest", "gourd", "pilgrim",
-               "cornucopia", "thankful"],
-    "独立日": ["4th of july", "july 4", "patriotic", "independence day",
-               "american flag", "stars and stripes", "star spangled",
-               "fireworks", "usa flag", "red white blue"],
-    "复活节": ["easter", "bunny", "easter egg", "pastel"],
-    "情人节": ["valentine", "valentines", "be mine", "love heart"],
+# 节日核心名（用于组合判定；用节日名而非泛符号，避免 pumpkin/skeleton 等串入）
+HOLIDAY_BASE = {
+    "万圣节": ["halloween", "hallowe'en"],
+    "圣诞节": ["christmas", "xmas"],
+    "感恩节": ["thanksgiving"],
+    "独立日": ["4th of july", "july 4", "patriotic", "independence day"],
+    "复活节": ["easter"],
+    "情人节": ["valentine", "valentines"],
 }
-OTHER = ["圣诞节", "感恩节", "独立日", "复活节", "情人节"]
+# 餐具品类词：用户指定 plates/cups/cutlery，并扩展覆盖 Shopify 派对餐具店
+# 真实用词（napkins/bowls/table setting/tableware 等），含单复数
+CATS = ["plate", "plates", "cup", "cups", "cutlery", "napkin", "napkins", "bowl",
+        "bowls", "tableware", "table setting", "table for", "place card",
+        "place cards", "dinnerware", "serveware", "mug", "mugs", "straw",
+        "straws", "dish", "dishes", "flatware"]
+ORDER = ["万圣节", "圣诞节", "感恩节", "独立日", "复活节", "情人节"]
 
 
 def _hit(low, kw):
     return re.search(r"(?<![a-z])" + re.escape(kw) + r"(?![a-z])", low) is not None
 
 
-def reclassify_halloween(text):
-    """返回 (新节日, 命中词)。仅用于原 holiday=='万圣节' 的记录。"""
+def _has_cat(low):
+    return any(_hit(low, c) for c in CATS)
+
+
+def classify(text):
+    """返回 (节日, 命中节日词) 或 (None, None)。必须 节日名 AND 品类词。"""
     low = " " + (text or "").lower() + " "
-    # 1. 其他节日强词优先（修正抢占）
-    for hol in OTHER:
-        for kw in HOLIDAY_KW[hol]:
-            if _hit(low, kw):
-                return hol, kw
-    # 2. 万圣节保留：专属词 或 costume
-    for kw in HOLIDAY_KW["万圣节"]:
-        if _hit(low, kw):
-            return "万圣节", kw
-    if _hit(low, "costume") or _hit(low, "costumes"):
-        return "万圣节", "costume"
-    # 3. 都不满足 -> 剔除
+    if not _has_cat(low):
+        return None, None
+    for hol in ORDER:
+        for base in HOLIDAY_BASE[hol]:
+            if _hit(low, base):
+                return hol, base
     return None, None
 
 
@@ -87,51 +79,42 @@ def main():
     s, arr = load_data()
     from collections import Counter
     indep = [r for r in arr if r.get("platform") == "独立站"]
-    before_h = Counter(r["holiday"] for r in indep if r["holiday"] == "万圣节")
+    before = Counter(r["holiday"] for r in indep)
 
-    keep_count, change_count, drop_count = 0, 0, 0
-    moved = Counter()          # 万圣节 -> 其他节日 的迁移计数
-    dropped_samples, changed_samples = [], []
-
+    keep = Counter()
+    changed, dropped = [], []
     drop_ids = set()
     for r in arr:
-        if r.get("platform") != "独立站" or r.get("holiday") != "万圣节":
+        if r.get("platform") != "独立站":
             continue
         blob = " ".join(filter(None, [r.get("title", ""), tags_text(r), r.get("brand", "")]))
-        new_hol, kw = reclassify_halloween(blob)
+        new_hol, base = classify(blob)
         if new_hol is None:
             drop_ids.add(r["id"])
-            drop_count += 1
-            dropped_samples.append(r.get("title", "")[:70])
+            dropped.append(r)
         else:
-            if new_hol != "万圣节":
-                change_count += 1
-                moved[new_hol] += 1
-                changed_samples.append((new_hol, r.get("title", "")[:60]))
-            else:
-                keep_count += 1
+            if r.get("holiday") != new_hol:
+                changed.append((r["id"], r.get("holiday"), new_hol, r.get("title", "")[:55]))
             r["holiday"] = new_hol
-            r["holiday_reason"] = (
-                f"标题/标签含「{kw}」（重分类修正）" if new_hol != "万圣节"
-                else f"万圣节竞品：含「{kw}」"
-            )
+            r["holiday_reason"] = f"节日餐具竞品：含「{base}」+ 餐具词(plates/cups/cutlery)"
+            keep[new_hol] += 1
 
-    print("=== 万圣节标签处理前：独立站中被标为万圣节 =", sum(before_h.values()), "条 ===")
-    print("=== 精准修正结果（仅作用于万圣节标签）===")
-    print(f"  保留为万圣节 : {keep_count}")
-    print(f"  改到其他节日 : {change_count}  -> {dict(moved)}")
-    print(f"  剔除(非节日): {drop_count}")
-    print(f"\n其他节日标签原样保留：圣诞/感恩节/复活节/独立日/情人节 共 "
-          f"{len(indep) - sum(before_h.values())} 条未动")
-    print(f"独立站总数: {len(indep)} -> {len(indep) - drop_count}  (净剔除 {drop_count})")
-    print("\n--- 改到其他节日的样例 ---")
-    for hol, t in changed_samples[:15]:
-        print(f"  -> {hol}: {t}")
-    print("\n--- 将被剔除的样例(非节日/泛品) ---")
-    for t in dropped_samples[:25]:
-        print(f"  {t}")
-    if len(dropped_samples) > 25:
-        print(f"  ... 共 {len(dropped_samples)} 条")
+    print("=== 修正前 独立站各节日分布 ===")
+    for k, v in before.most_common():
+        print(f"  {k}: {v}")
+    print("=== 新规则(节日名+餐具词)后 独立站分布 ===")
+    for k, v in keep.most_common():
+        print(f"  {k}: {v}")
+    print(f"\n独立站总数: {len(indep)} -> {len(indep) - len(dropped)}  (剔除 {len(dropped)})")
+    print(f"改标签条目数: {len(changed)}")
+    print("\n--- 改标签样例 ---")
+    for i, t in changed[:12]:
+        print(f"  {i}: {t}")
+    print("\n--- 将被剔除的样例(非 节日+餐具) ---")
+    for r in dropped[:25]:
+        print(f"  [{r.get('holiday')}] {r.get('title','')[:65]}")
+    if len(dropped) > 25:
+        print(f"  ... 共 {len(dropped)} 条")
 
     if not apply:
         print("\n[DRY-RUN] 未写回。加 --apply 执行。")
@@ -139,7 +122,7 @@ def main():
 
     new_arr = [r for r in arr if r["id"] not in drop_ids]
     new_json = json.dumps(new_arr, ensure_ascii=False)
-    new_s = re.sub(r"(var DATA\s*=\s*)\[.*?\];", lambda m: m.group(1) + new_json + ";", s, flags=re.S)
+    new_s = re.sub(r"(var DATA\s*=\s*)\[.*?\];", lambda m: m.group(1) + new_json + ";", s, flags=re.S, count=1)
     with open(INDEX, "w", encoding="utf-8") as f:
         f.write(new_s)
     print(f"\n[APPLIED] 已写回 index.html，剩余记录 {len(new_arr)} 条。")
