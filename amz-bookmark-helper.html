@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>安装「AMZ销量」书签</title>
+</head>
+<body style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:620px;margin:48px auto;padding:0 20px;line-height:1.8;color:#222">
+  <h2 style="margin:0 0 8px">安装「AMZ销量」书签</h2>
+  <p>下面这个橙色按钮是一个<b>书签链接</b>。请用鼠标<b>按住它，拖到浏览器顶部的收藏夹栏</b>松手——就装好了，<u>不用复制任何代码</u>。</p>
+  <p style="background:#fff7e6;border:1px solid #ffd591;padding:10px 14px;border-radius:8px;font-size:14px">
+    ⚠️ 直接拖，<b>千万别右键“复制链接”或手动粘贴</b>——那样又会把代码弄坏（你刚才就是这么坏掉的）。
+  </p>
+  <div style="text-align:center;margin:26px 0">
+    <a id="bm" href="javascript:
+(function(){
+  function q(s){var e=document.querySelector(s);return e?(e.innerText||e.textContent||'').trim():''}
+  function meta(p){var m=document.querySelector('meta[property=&quot;'+p+'&quot;],meta[name=&quot;'+p+'&quot;]');return m?m.getAttribute('content'):''}
+  var url=location.href;
+  var mm=url.match(/(?:\/dp\/|\/gp\/product\/|\/product\/)([A-Z0-9]{10})/i);
+  var asin=mm?mm[1]:'';
+  if(!asin){var d=document.querySelector('[data-asin]');if(d)asin=d.getAttribute('data-asin')||''}
+  if(!asin){var a=document.querySelector('#ASIN');if(a)asin=a.value||''}
+  var title=(q('#productTitle')||q('h1')||meta('og:title')||document.title).replace(/\s*:\s*Amazon.*$/i,'').trim();
+  var body=document.body?document.body.innerText:'';
+  var has=/bought in past month|bought past month|bought in the past month/i.test(body);
+  var mt=body.match(/([\d,]*\s*\d\+?)\s*bought\s+(?:in|past|the\s+past|last)\s*month/i);
+  var sales=has?(mt?mt[0].trim():'bought in past month'):'';
+  var KEY='amzSalesCheck';
+  var store=JSON.parse(localStorage.getItem(KEY)||'[]');
+  var box=document.createElement('div');box.id='amzSC';
+  box.style.cssText='position:fixed;top:16px;right:16px;width:330px;z-index:2147483647;background:#fff;border:2px solid #ff9900;font:13px/1.5 Arial;padding:14px;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+  box.innerHTML='<div style=&quot;font-weight:700;color:#b12704;margin-bottom:6px&quot;>Amazon 销量标签检测</div>'
+   +'<div style=&quot;margin-bottom:4px&quot;>ASIN: <b>'+asin+'</b></div>'
+   +'<div style=&quot;margin-bottom:4px&quot;>标题: '+(title.slice(0,55))+'</div>'
+   +'<div style=&quot;margin:6px 0;padding:6px;background:'+(has?'#e6f9e6':'#fdecea')+';border-radius:4px&quot;>'
+   +'自动检测: <b style=&quot;color:'+(has?'#0a7':'#c00')+'&quot;>'+(has?'✅ 有销量标签':'❌ 未检测到销量标签')+'</b>'
+   +(sales?'<br>文本: '+sales:'')+'</div>'
+   +'<div style=&quot;font-size:12px;color:#555;margin-bottom:6px&quot;>若页面未加载完，请刷新后再点书签</div>'
+   +'<div style=&quot;display:flex;gap:6px;flex-wrap:wrap&quot;>'
+   +'<button id=&quot;bYes&quot; style=&quot;flex:1;min-width:90px;padding:6px;background:#0a7;color:#fff;border:0;cursor:pointer&quot;>确认：有标签</button>'
+   +'<button id=&quot;bNo&quot; style=&quot;flex:1;min-width:90px;padding:6px;background:#c00;color:#fff;border:0;cursor:pointer&quot;>确认：无标签</button>'
+   +'<button id=&quot;bSkip&quot; style=&quot;flex:1;min-width:90px;padding:6px;background:#bbb;color:#000;border:0;cursor:pointer&quot;>跳过</button></div>'
+   +'<div style=&quot;display:flex;gap:6px;margin-top:6px&quot;>'
+   +'<button id=&quot;bExp&quot; style=&quot;flex:1;padding:6px;background:#232f3e;color:#fff;border:0;cursor:pointer&quot;>导出清单</button>'
+   +'<button id=&quot;bClose&quot; style=&quot;flex:1;padding:6px;background:#ddd;color:#000;border:0;cursor:pointer&quot;>关闭</button></div>'
+   +'<div id=&quot;msg&quot; style=&quot;margin-top:6px;font-size:12px;color:#0a7&quot;></div>';
+  document.body.appendChild(box);
+  function rec(label){ if(!asin){document.getElementById('msg').textContent='未提取到 ASIN，无法记录';return}
+    store=store.filter(function(x){return x.asin!==asin});
+    store.push({asin:asin,title:title,has_sales_label:label==='yes',sales_text:sales,url:url,status:label,checked_at:new Date().toISOString()});
+    localStorage.setItem(KEY,JSON.stringify(store));
+    document.getElementById('msg').textContent='已记录（共 '+store.length+' 条）';
+  }
+  document.getElementById('bYes').onclick=function(){rec('yes')};
+  document.getElementById('bNo').onclick=function(){rec('no')};
+  document.getElementById('bSkip').onclick=function(){store=store.filter(function(x){return x.asin!==asin});localStorage.setItem(KEY,JSON.stringify(store));box.remove()};
+  document.getElementById('bExp').onclick=function(){var b=new Blob([JSON.stringify(store,null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='amz-sales-check.json';a.click();document.getElementById('msg').textContent='已下载 '+store.length+' 条'};
+  document.getElementById('bClose').onclick=function(){box.remove()};
+})();
+" style="display:inline-block;background:#ff9900;color:#fff;padding:16px 26px;border-radius:12px;font-size:17px;font-weight:700;text-decoration:none;cursor:grab;box-shadow:0 3px 12px rgba(255,153,0,.4)">📌 拖我到收藏夹栏：AMZ销量</a>
+  </div>
+  <ol style="font-size:14px">
+    <li>拖完后，收藏夹栏会出现「AMZ销量」（⚠️ 先<b>删除之前那个坏的</b>文件夹/旧条目）。</li>
+    <li>打开 <code>amz_asin_list.txt</code> 里任意一条亚马逊链接，等页面加载完（能看到价格、评分）。</li>
+    <li>点收藏栏「AMZ销量」→ 右上角弹橙框 → 选「确认：有标签 / 无标签」。</li>
+    <li>查完点弹窗「导出清单」下载 <code>amz-sales-check.json</code>，发回给我即可。</li>
+  </ol>
+  <p style="color:#888;font-size:13px">如拖拽无效：长按该按钮别松 → 拖到收藏夹栏；或把本页加入收藏后编辑其网址。</p>
+</body>
+</html>
