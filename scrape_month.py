@@ -158,26 +158,47 @@ SHOPIFY_STORES = [
 # 节日关键词（英文，匹配 Shopify 商品标题/类型/标签/品牌）
 # 只保留“节日专属”词，剔除 holiday/winter/festive/autumn/love 等泛义词，避免跨节错归。
 HOLIDAY_KEYWORDS = {
-    "万圣节": ["halloween", "haunted", "pumpkin", "skeleton", "ghost", "witch",
-               "spider", "spooky", "monster", "costume", "skull", "zombie"],
+    "万圣节": ["halloween", "hallowe'en", "haunted", "pumpkin", "skeleton",
+               "ghost", "witch", "spider", "spooky", "monster", "skull",
+               "zombie", "boo", "bat", "mummy", "vampire", "graveyard",
+               "cobweb", "cauldron", "candy corn", "jack-o", "jack o",
+               "creepy", "frankenstein", "werewolf"],
     "感恩节": ["thanksgiving", "turkey", "harvest", "gourd", "pilgrim",
-               "cornucopia"],
+               "cornucopia", "thankful"],
     "圣诞节": ["christmas", "xmas", "santa", "reindeer", "ornament", "wreath",
-               "snowman", "advent", "nutcracker", "gingerbread", "elf ", "sleigh"],
-    "复活节": ["easter", "bunny"],
-    "情人节": ["valentine", "valentines"],
-    "独立日": ["4th of july", "july 4", "patriotic", "independence",
-               "american flag", "stars and stripes", "star spangled"],
+               "snowman", "advent", "nutcracker", "gingerbread", "elf",
+               "sleigh", "tinsel", "poinsettia", "mistletoe", "stocking",
+               "santa claus", "christmas tree", "noel", "grinch"],
+    "复活节": ["easter", "bunny", "easter egg", "pastel"],
+    "情人节": ["valentine", "valentines", "be mine", "love heart"],
+    "独立日": ["4th of july", "july 4", "patriotic", "independence day",
+               "american flag", "stars and stripes", "star spangled",
+               "fireworks", "usa flag", "red white blue"],
 }
 
 
+def _hit(low, kw):
+    """词边界匹配，避免 boo->boost、bat->batman、elf->self 误命中。"""
+    return re.search(r"(?<![a-z])" + re.escape(kw) + r"(?![a-z])", low) is not None
+
+
 def _classify_independent(text):
-    """按关键词把商品文本归类到节日；命中多个取优先级最高的，未命中返回 None。"""
+    """独立站商品归类（修正版）：
+    1) 先把明显属于其他节日的截走，修正万圣节优先级抢占导致的错归；
+    2) 再判定万圣节（专属词 或 costume，costume 是万圣节核心品类）；
+    3) 无节日信号的泛品返回 None，不录入。
+    依赖 title+product_type+vendor+tags 完整 blob，比 reclassify 脚本多
+    product_type/vendor 信号，能保留靠类型归类的真节日商品。"""
     low = " " + (text or "").lower() + " "
-    for holiday in ["万圣节", "感恩节", "圣诞节", "独立日", "复活节", "情人节"]:
+    for holiday in ["圣诞节", "感恩节", "独立日", "复活节", "情人节"]:
         for kw in HOLIDAY_KEYWORDS[holiday]:
-            if kw in low:
+            if _hit(low, kw):
                 return holiday
+    for kw in HOLIDAY_KEYWORDS["万圣节"]:
+        if _hit(low, kw):
+            return "万圣节"
+    if _hit(low, "costume") or _hit(low, "costumes"):
+        return "万圣节"
     return None
 
 
