@@ -1,0 +1,43 @@
+============================================================
+卖家精灵 × 亚马逊 一键导出工具
+用途：在你已安装「卖家精灵」插件的浏览器里，
+      打开亚马逊任一商品列表页（搜索结果 / 产品数据库镜像页 /
+      关键词反查结果页均可，只要页面上卖家精灵已经显示了
+      销量浮层），运行本工具，把当前页面所有商品卡片导出成文本，
+      复制后发给助手，助手会录入节日工作台（带真实月销量）。
+============================================================
+
+【方法一：控制台粘贴（最简单，推荐）】
+1. 浏览器打开亚马逊商品列表页（卖家精灵插件已显示销量）
+2. 按 F12 → 点「控制台」(Console)
+3. 把下面【导出代码】整段粘进输入框，回车
+4. 会自动复制结果到剪贴板；若没复制成功，
+   控制台也会打印文本，手动全选复制即可
+5. 把内容粘贴发给助手（从 ===AMZ_SP_START=== 到 ===AMZ_SP_END===）
+
+【导出代码】（从下一行开始，到 “===结束===” 之前）
+javascript:(function(){function parseSales(t){if(!t)return"";var pats=[/月销量[：:\s]*([\d,]+(?:\.\d+)?\s*[kKwW]?)/i,/销量[：:\s]*([\d,]+(?:\.\d+)?\s*[kKwW]?)/i,/销售额[：:\s]*[\$￥]?\s*([\d,]+(?:\.\d+)?\s*[kKwWmM]?)/i,/([\d,]+(?:\.\d+)?\s*[kKwW]?)\s*(?:sales|units|月销)/i];for(var i=0;i<pats.length;i++){var m=t.match(pats[i]);if(m)return m[1].trim()}return""}var cards=document.querySelectorAll('div[data-asin]');var out=[],seen={},raw=[];cards.forEach(function(c){var asin=(c.getAttribute('data-asin')||'').trim();if(!asin||!/^[A-Z0-9]{10}$/.test(asin))return;if(seen[asin])return;seen[asin]=1;var titleEl=c.querySelector('h2 a span')||c.querySelector('span.a-size-medium')||c.querySelector('a[title]')||c.querySelector('img');var title=titleEl?(titleEl.textContent||titleEl.getAttribute('alt')||titleEl.getAttribute('title')||'').replace(/\s+/g,' ').trim().slice(0,200):'';var imgEl=c.querySelector('img.s-image')||c.querySelector('img');var img=imgEl?(imgEl.src||imgEl.getAttribute('data-src')||''):'';var cardText=(c.textContent||'').replace(/\s+/g,' ').trim().slice(0,600);out.push({asin:asin,title:title,image:img,url:'https://www.amazon.com/dp/'+asin,sales:parseSales(cardText),price:((cardText.match(/\$[\d,]+(?:\.\d{2})?/)||[])[0]||''),cardText:cardText})});var txt='===AMZ_SP_START===\n'+JSON.stringify(out,null,1)+'\n===AMZ_SP_END===';if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){alert('已导出 '+out.length+' 条亚马逊商品（含卖家精灵销量），粘贴发给助手即可')},function(){console.log(txt)})}else{console.log(txt)};console.log(txt)})();
+===结束===
+
+【方法二：存成书签（以后点一下就用）】
+1. 浏览器书签栏右键 → 添加书签
+2. 名称填「卖家精灵导出」
+3. 网址那一栏，把上面【导出代码】整段粘进去（含开头的 javascript:）
+4. 以后打开亚马逊列表页（卖家精灵已显示销量），点这个书签即可
+
+============================================================
+说明
+- 导出字段：asin（亚马逊ASIN）、title（标题）、image（主图）、
+  url（商品链接）、sales（从卖家精灵浮层识别的月销量）、
+  price（价格）、cardText（卡片原文，销量识别不准时助手用原文精解）。
+- 助手收到后会：平台标记为「亚马逊」，按标题里的节日关键词
+  （halloween/christmas/thanksgiving…）自动归类，证据类型记为
+  「月销量（卖家精灵）」，写入当月采集数据；原 170 条带月销量
+  的数据不会被覆盖（合并只增不删）。
+- 一次抓一页（亚马逊搜索页约 48 个）。要“尽可能多”，请：
+  (a) 翻多页、逐页导出；或
+  (b) 直接去卖家精灵「产品数据库」用节日关键词搜，点右上角
+      「导出」存成 Excel/CSV 发我，一次能拿到几百条带销量，更全。
+- 若某次导出数量为 0：确认页面是亚马逊商品列表页（URL 含
+  /s?k= 或产品数据库镜像），且商品卡片已加载（卖家精灵浮层可见）。
+============================================================
