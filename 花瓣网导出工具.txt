@@ -1,0 +1,37 @@
+花瓣网导出工具
+用途：在浏览器里打开花瓣网搜索结果页（已能正常看到图片，即已通过验证），
+      一键抓取当前页所有图片卡片（标题 + 图片地址 + 链接），复制到剪贴板，
+      粘贴发给助手即可导入工作台（平台标记为「花瓣网」）。
+
+═══════ 安装步骤（两种任选其一）═══════
+
+【方式 A：拖拽安装页（推荐，避免长代码复制被破坏）】
+  1. 用浏览器打开助手给的「huaban-bookmark-helper.html」页面
+  2. 把页面上橙色按钮「花瓣网导出」直接拖到书签栏
+  3. 完成，书签栏出现「花瓣网导出」即可
+
+【方式 B：手动新建书签】
+  1. 浏览器书签栏右键 → 新建书签（或「添加网页」）
+  2. 名称填「花瓣网导出」
+  3. 网址（URL）一栏，把下面整段 javascript: 代码【原样】粘贴进去
+     （注意：必须以 javascript: 开头，中间不要有换行、不要有空格被转义）
+  4. 保存
+
+═══════ 书签代码（从 javascript: 开始整段复制）═══════
+
+javascript:(function(){var pins=[];var nodes=document.querySelectorAll('a[href*="/pins/"]');[].forEach.call(nodes,function(a){var href=a.getAttribute('href')||'';if(href.indexOf('/pins/')<0)return;var imgs=a.querySelectorAll('img');var src='';if(imgs.length){src=imgs[0].src||imgs[0].getAttribute('data-src')||imgs[0].getAttribute('data-original')||(imgs[0].getAttribute('srcset')||'').split(' ')[0]||'';}var t=(a.getAttribute('title')||a.getAttribute('alt')||a.textContent||'').replace(/\s+/g,' ').trim().slice(0,200);if(src||href)pins.push({url:'https://huaban.com'+href,image:src,title:t});});var seen={},out=[];pins.forEach(function(p){var k=p.url||p.image;if(k&&!seen[k]){seen[k]=1;out.push(p)}});var txt='===HUABAN_EXPORT_START===\n'+JSON.stringify(out,null,1)+'\n===HUABAN_EXPORT_END===';if(window.navigator&&navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){alert('已复制 '+out.length+' 条花瓣图片，粘贴发给助手即可')},function(){console.log(txt);alert('复制失败，请看控制台(F12)复制')})}else{console.log(txt);alert('请看控制台(F12)复制')}console.log(txt);})();
+
+═══════ 使用步骤 ═══════
+  1. 浏览器打开花瓣网搜索页，例如：
+       万圣节  https://huaban.com/search/?q=%E4%B8%87%E5%9C%A3%E8%8A%82
+       圣诞节  https://huaban.com/search/?q=%E5%9C%A3%E8%AF%9E%E8%8A%82
+       感恩节  https://huaban.com/search/?q=%E6%84%9F%E6%81%A9%E8%8A%82
+     （若弹出「验证连接安全性」，按提示勾选/等待通过即可——你本地真实 IP 一般能过）
+  2. 页面能看到图片后，点书签栏的「花瓣网导出」
+  3. 自动复制当前页所有图片卡片；翻几页、每页点一次，多抓一些
+  4. 把剪贴板内容（===HUABAN_EXPORT_START=== 开头那段）粘贴发给助手
+  5. 助手收到后会：平台标记为「花瓣网」，按标题里的节日关键词自动归类
+     （万圣节/感恩节/圣诞节/复活节/情人节/独立日），写入当月采集数据
+
+注意：图片多为懒加载，未滚动到的图可能抓取不到 src，多翻页、等图片
+      加载出来再点书签即可。导出的是「图片灵感」，证据类型记为「无」，tier 偏低。

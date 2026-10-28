@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>安装「花瓣网导出」书签</title>
+</head>
+<body style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:620px;margin:48px auto;padding:0 20px;line-height:1.8;color:#222">
+  <h2 style="margin:0 0 8px">安装「花瓣网导出」书签</h2>
+  <p>下面这个橙色按钮是一个<b>书签链接</b>。请用鼠标<b>按住它，拖到浏览器顶部的收藏夹栏</b>松手——就装好了，<u>不用复制任何代码</u>。</p>
+  <p style="background:#fff7e6;border:1px solid #ffd591;padding:10px 14px;border-radius:8px;font-size:14px">
+    ⚠️ 直接拖，<b>千万别右键“复制链接”或手动粘贴</b>——那样会把代码弄坏。
+  </p>
+  <div style="text-align:center;margin:26px 0">
+    <a id="bm" href="javascript:
+(function(){var pins=[];var nodes=document.querySelectorAll('a[href*=&quot;/pins/&quot;]');[].forEach.call(nodes,function(a){var href=a.getAttribute('href')||'';if(href.indexOf('/pins/')&lt;0)return;var imgs=a.querySelectorAll('img');var src='';if(imgs.length){src=imgs[0].src||imgs[0].getAttribute('data-src')||imgs[0].getAttribute('data-original')||(imgs[0].getAttribute('srcset')||'').split(' ')[0]||'';}var t=(a.getAttribute('title')||a.getAttribute('alt')||a.textContent||'').replace(/\s+/g,' ').trim().slice(0,200);if(src||href)pins.push({url:'https://huaban.com'+href,image:src,title:t});});var seen={},out=[];pins.forEach(function(p){var k=p.url||p.image;if(k&&!seen[k]){seen[k]=1;out.push(p)}});var txt='===HUABAN_EXPORT_START===\n'+JSON.stringify(out,null,1)+'\n===HUABAN_EXPORT_END===';if(window.navigator&&navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){alert('已复制 '+out.length+' 条花瓣图片，粘贴发给助手即可')},function(){console.log(txt);alert('复制失败，请看控制台(F12)复制')})}else{console.log(txt);alert('请看控制台(F12)复制')}console.log(txt);})();
+" style="display:inline-block;background:#ff9900;color:#fff;padding:16px 26px;border-radius:12px;font-size:17px;font-weight:700;text-decoration:none;cursor:grab;box-shadow:0 3px 12px rgba(255,153,0,.4)">📌 拖我到收藏夹栏：花瓣网导出</a>
+  </div>
+  <ol style="font-size:14px">
+    <li>拖完后，收藏夹栏会出现「花瓣网导出」。</li>
+    <li>浏览器打开花瓣网搜索页，例如：
+      <br><code>https://huaban.com/search/?q=%E4%B8%87%E5%9C%A3%E8%8A%82</code>（万圣节）</li>
+    <li>若弹出「验证连接安全性」，按提示勾选/等待通过（你本地真实 IP 一般能过）。</li>
+    <li>页面能看到图片后，点收藏栏「花瓣网导出」→ 自动复制当前页所有图片卡片。</li>
+    <li>翻几页、每页点一次多抓一些，把剪贴板内容（===HUABAN_EXPORT_START=== 那段）粘贴发回给我即可。</li>
+  </ol>
+  <p style="color:#888;font-size:13px">如拖拽无效：长按该按钮别松 → 拖到收藏夹栏；或把本页加入收藏后编辑其网址为书签代码。</p>
+</body>
+</html>
