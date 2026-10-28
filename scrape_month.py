@@ -144,6 +144,121 @@ def parse_image_search(query, limit=20):
     return out
 
 
+# ---- 独立站（Shopify 店铺）采集 ----
+# Shopify 店铺公开暴露 /products.json，可稳定拿到标题/主图/价格等结构化数据，
+# 是“独立站”板块最可靠的批量数据源（比 Bing 图片搜索真实、且带价格）。
+# 已连通性验证可用的店铺（festive/party/tableware 相关）；sophistiplate 已在库（59条），跳过避免重复。
+SHOPIFY_STORES = [
+    "partycity.com", "tipsyelves.com", "efavormart.com", "linentablecloth.com",
+    "cvlinens.com", "partydecorations.com", "birthdaydirect.com", "papermart.com",
+    "save-on-crafts.com", "factorydirectparty.com", "Pier1.com",
+    "brooklinen.com", "parachutehome.com", "allbirds.com",
+]
+
+# 节日关键词（英文，匹配 Shopify 商品标题/类型/标签/品牌）
+# 只保留“节日专属”词，剔除 holiday/winter/festive/autumn/love 等泛义词，避免跨节错归。
+HOLIDAY_KEYWORDS = {
+    "万圣节": ["halloween", "haunted", "pumpkin", "skeleton", "ghost", "witch",
+               "spider", "spooky", "monster", "costume", "skull", "zombie"],
+    "感恩节": ["thanksgiving", "turkey", "harvest", "gourd", "pilgrim",
+               "cornucopia"],
+    "圣诞节": ["christmas", "xmas", "santa", "reindeer", "ornament", "wreath",
+               "snowman", "advent", "nutcracker", "gingerbread", "elf ", "sleigh"],
+    "复活节": ["easter", "bunny"],
+    "情人节": ["valentine", "valentines"],
+    "独立日": ["4th of july", "july 4", "patriotic", "independence",
+               "american flag", "stars and stripes", "star spangled"],
+}
+
+
+def _classify_independent(text):
+    """按关键词把商品文本归类到节日；命中多个取优先级最高的，未命中返回 None。"""
+    low = " " + (text or "").lower() + " "
+    for holiday in ["万圣节", "感恩节", "圣诞节", "独立日", "复活节", "情人节"]:
+        for kw in HOLIDAY_KEYWORDS[holiday]:
+            if kw in low:
+                return holiday
+    return None
+
+
+def parse_independent(limit_per_store=5000, max_pages=40):
+    """
+    独立站采集：遍历 SHOPIFY_STORES，抓 /products.json（分页），按节日关键词筛选，
+    记录标题/主图/售价/来源链接。自带节日分类，按 source_url 去重。
+    无网络/店铺不可达时静默跳过，不影响其他来源。每月流水线只需调用一次。
+    """
+    out, seen = [], set()
+    for store in SHOPIFY_STORES:
+        if len(out) >= limit_per_store:
+            break
+        base = f"https://{store}"
+        for page in range(1, max_pages + 1):
+            try:
+                r = requests.get(f"{base}/products.json?limit=250&page={page}",
+                                 headers=HEADERS, timeout=15)
+                if r.status_code != 200:
+                    break
+                try:
+                    j = r.json()
+                except Exception:
+                    break
+                products = j.get("products") or []
+                if not products:
+                    break
+                for p in products:
+                    title = (p.get("title") or "").strip()
+                    if not title:
+                        continue
+                    blob = " ".join(filter(None, [
+                        title, p.get("product_type", ""), p.get("vendor", ""),
+                        " ".join(p.get("tags", []) or []),
+                    ]))
+                    holiday = _classify_independent(blob)
+                    if not holiday:          # 只保留节日相关，保持板块聚焦
+                        continue
+                    handle = p.get("handle") or ""
+                    src = f"{base}/products/{handle}" if handle else (p.get("product_url") or "")
+                    if src in seen:
+                        continue
+                    seen.add(src)
+                    img = ""
+                    if p.get("images"):
+                        img = p["images"][0].get("src") or ""
+                    price = ""
+                    vs = p.get("variants") or []
+                    if vs and vs[0].get("price"):
+                        price = "$" + str(vs[0]["price"])
+                    elif p.get("price"):
+                        price = "$" + str(p["price"])
+                    rec = _make_record(title, "独立站", holiday, img=img)
+                    rec.update({
+                        "source_url": src,
+                        "price": price,
+                        "brand": p.get("vendor", "") or "",
+                        "evidence_type": "售价",
+                        "evidence_value": price,
+                        "evidence_note": f"Shopify独立站 {store}（售价证据）",
+                        "tier": 4,
+                        "design_type": "实拍图",
+                        "collected_by": "Shopify采集",
+                        "holiday": holiday,
+                        "tags": f"{holiday},独立站",
+                        "holiday_reason": holiday,
+                    })
+                    out.append(rec)
+                if len(products) < 250:
+                    break
+            except Exception:
+                break
+            time.sleep(0.3)
+        time.sleep(0.5)
+    if not out:
+        print("  ⚠ 独立站（Shopify）未采到数据（网络受限/店铺不可达），已跳过。")
+    else:
+        print(f"  ✓ 独立站（Shopify）命中 {len(out)} 条")
+    return out
+
+
 def parse_huaban(query, limit=20):
     """
     花瓣网（huaban.com）采集：花瓣挂了腾讯 EdgeOne 人机验证，
@@ -484,6 +599,8 @@ def run(year, month):
         records += parse_image_search(query)
         records += parse_amazon(query)
         time.sleep(1)  # 礼貌限速
+    # 独立站（Shopify）只抓一次，自带节日分类，避免每个节日重复遍历店铺
+    records += parse_independent()
     # 统一打标
     for i, r in enumerate(records, 1):
         r["id"] = 100000 + i  # 合并脚本会重排，避免冲突
