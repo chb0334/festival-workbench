@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>手动安装「花瓣捕获」书签（复制粘贴版）</title></head>
+<body style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.85;color:#222">
+<h2>手动安装「花瓣捕获」书签（这次不拖了）</h2>
+<p style="background:#fdecea;border:1px solid #f5c6cb;padding:10px 14px;border-radius:8px">之前拖拽安装的书签十有八九是空壳（网址不是代码）。请<b>先删掉工具栏上旧的那个</b>（右键→删除），再按下面做。</p>
+
+<h3>第 1 步：复制下面的代码</h3>
+<p>点「全选并复制」按钮（或点进文本框 → Ctrl+A → Ctrl+C）：</p>
+<div style="text-align:center;margin:14px 0">
+<button onclick="var t=document.getElementById('code');t.focus();t.select();document.execCommand('copy');this.textContent='✓ 已复制，去做第 2 步'" style="background:#2f7ed8;color:#fff;padding:12px 22px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">📋 全选并复制</button>
+</div>
+<textarea id="code" readonly spellcheck="false" style="width:100%;height:130px;font:11px/1.4 monospace;background:#f7f7f7;border:1px solid #ccc;border-radius:8px;padding:8px;white-space:pre;overflow:auto">javascript:(function(){ var KEY='huaban_capture_v1'; function getQ(){var m=location.search.match(/[?&amp;]q=([^&amp;]+)/);return m?decodeURIComponent(m[1]):'';} function stripHoliday(q){var p=['盘子','餐盘','杯子','杯','餐具','碗','餐碗','桌布','餐垫','cutlery','plates','plate','cups','cup'];var h=q;p.forEach(function(x){h=h.split(x).join('');});return h||q;} function rank(u){if(/fw658|fw720|fw960|fw1000/.test(u))return 5;if(/fw240|fw320|fw336/.test(u))return 4;if(/crop/.test(u))return 3;if(/sq\d/.test(u))return 1;return 2;} function filekey(u){var m=u.match(/([0-9a-f]{40}-[A-Za-z0-9]+)_/);return m?m[1]:null;} var map={}; function add(u,src){var k=filekey(u);if(!k)return;if(!map[k]||rank(u)&gt;rank(map[k].url))map[k]={hash:k,url:u,source:src||''};} var q=getQ();var holiday=stripHoliday(q); [].forEach.call(document.images,function(im){ var src='';var a=im.closest?im.closest('a'):null;if(a&amp;&amp;/pins\/\d+/.test(a.href||''))src=a.href; add(im.src,src);add(im.getAttribute('data-src'),src); var ss=im.getAttribute('srcset');if(ss)ss.split(',').forEach(function(p){add(p.trim().split(/\s+/)[0],src);}); }); [].forEach.call(document.querySelectorAll('[style]'),function(el){ var ms=(el.getAttribute('style')||'').match(/url\(\s*['&quot;]?([^'&quot;)]+)['&quot;]?\s*\)/g); if(ms)ms.forEach(function(x){add(x.replace(/.*url\(\s*['&quot;]?/,'').replace(/['&quot;]?\s*\)\s*$/,''),'');}); }); try{var raw=document.documentElement.innerHTML.replace(/\\\//g,'/');var re=/[a-z0-9.\-]*hbimg[^&quot;'\s&lt;&gt;\\]*/g,mm;while((mm=re.exec(raw)))add('https://'+mm[0],'');}catch(e){} var keys=Object.keys(map); keys.forEach(function(k){map[k].q=q;map[k].holiday=holiday;map[k].title=q;}); var all={};try{var ex=JSON.parse(localStorage.getItem(KEY)||'{}');Object.keys(ex).forEach(function(k){all[k]=ex[k];});}catch(e){} var added=0;keys.forEach(function(k){if(!all[k]){all[k]=map[k];added++;}}); try{localStorage.setItem(KEY,JSON.stringify(all));}catch(e){} var total=Object.keys(all).length; (function dl(i){if(i&gt;=keys.length)return;var a=document.createElement('a');a.href=map[keys[i]].url;a.download=keys[i]+'.webp';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){dl(i+1);},300);})(0); var box=document.createElement('div'); box.style.cssText='position:fixed;left:12px;top:12px;z-index:2147483647;background:#000d;color:#0f0;padding:12px 14px;border-radius:10px;font:13px/1.5 monospace;max-width:380px'; box.innerHTML='本页匹配 &lt;b&gt;'+keys.length+'&lt;/b&gt; 张（新增 '+added+'，累计 '+total+'）。&lt;br&gt;图片已自动下载（若弹“允许多次下载”请点允许）。&lt;br&gt;&lt;button id=&quot;exp&quot; style=&quot;margin-top:8px;padding:6px 10px;cursor:pointer&quot;&gt;下载全部元数据JSON('+total+')&lt;/button&gt; &lt;button id=&quot;cp&quot; style=&quot;margin-top:8px;padding:6px 10px;cursor:pointer&quot;&gt;复制全部&lt;/button&gt;&lt;br&gt;&lt;span style=&quot;color:#aaa;font-size:11px&quot;&gt;在 6 个“节日+盘子”搜索页各跑一次，最后点“下载全部元数据”导出，把 JSON 和 .webp 图一起交给助手。&lt;/span&gt;'; document.body.appendChild(box); box.querySelector('#exp').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(Object.keys(all).map(function(k){return all[k];}))],{type:'application/json'}));a.download='huaban_capture.json';a.click();}; box.querySelector('#cp').onclick=function(){navigator.clipboard.writeText(JSON.stringify(Object.keys(all).map(function(k){return all[k];}))).then(function(){alert('已复制 '+total+' 条');});}; })();</textarea>
+
+<h3>第 2 步：新建书签并粘贴</h3>
+<ol style="font-size:14px">
+<li>在 Firefox 里<b>右键点击顶部书签工具栏的空白处</b> → 选「<b>新建书签…</b>」（如果没有这个选项：菜单 ☰ → 书签 → 管理书签 → 顶栏「导入和备份」旁的 ⭐/组织 → 新建书签）。</li>
+<li>弹窗里填两项：
+  <ul>
+  <li><b>名称</b>：<code>花瓣捕获</code></li>
+  <li><b>网址（位置/URL）</b>：把刚复制的代码<b>原样粘贴</b>进去（Ctrl+V），粘贴后确认以 <code>javascript:</code> 开头。</li>
+  </ul></li>
+<li>点「保存」。工具栏上出现「花瓣捕获」。</li>
+</ol>
+
+<h3>第 3 步：到花瓣搜索页点它</h3>
+<ol style="font-size:14px">
+<li>打开 <code>https://huaban.com/search/?q=万圣节盘子</code>，等缩略图出来。</li>
+<li>点工具栏「花瓣捕获」→ 左上角出现<b>黑底绿字框</b>「本页匹配 N 张」→ 图片自动下载。</li>
+<li>弹“允许下载多个文件”点<b>允许</b>。</li>
+<li>6 个“节日+盘子”搜索页各跑一次，最后点绿框「下载全部元数据JSON」，把 JSON + .webp 一起交给助手。</li>
+</ol>
+<p style="color:#888;font-size:13px">若第 3 步还是没反应：右键工具栏「花瓣捕获」→ 属性，把「位置」字段开头一小段截图发我，我立刻判断哪里断了。</p>
+</body></html>
