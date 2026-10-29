@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>安装「花瓣捕获」书签（节日+盘子）</title></head>
+<body style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.85;color:#222">
+<h2>安装「花瓣捕获」书签（抓“节日+盘子”图）</h2>
+<p>橙色按钮是<b>书签链接</b>。<b>按住拖到浏览器收藏夹栏</b>松手即装好，<u>不用复制代码</u>。</p>
+<p style="background:#fff7e6;border:1px solid #ffd591;padding:10px 14px;border-radius:8px;font-size:14px">⚠️ 直接<b>拖</b>，<b>别右键复制链接/手动粘贴</b>，会弄坏代码。</p>
+<div style="text-align:center;margin:26px 0">
+<a id="bm" href="#" style="display:inline-block;background:#2f7ed8;color:#fff;padding:16px 26px;border-radius:12px;font-size:17px;font-weight:700;text-decoration:none;cursor:grab;box-shadow:0 3px 12px rgba(47,126,216,.4)">📸 拖我到收藏夹栏：花瓣捕获</a>
+</div>
+
+<h3>一、装书签（只做一次）</h3>
+<ol style="font-size:14px">
+<li><b>显示收藏夹栏</b>：Chrome/Edge 按 <code>Ctrl+Shift+B</code>（Mac <code>Cmd+Shift+B</code>）；Firefox 菜单 ☰ → 书签 → 勾「书签工具栏」。</li>
+<li>鼠标左键按住上面蓝色按钮，拖到收藏夹栏松手。栏里出现「花瓣捕获」即装好。</li>
+</ol>
+
+<h3>二、在 6 个“节日+盘子”搜索页各跑一次</h3>
+<ol style="font-size:14px">
+<li>地址栏逐个打开（每行一个，整段粘贴回车）：
+<pre style="background:#f5f5f5;padding:10px;border-radius:6px;font-size:12px;white-space:pre-wrap">https://huaban.com/search/?q=万圣节盘子
+https://huaban.com/search/?q=感恩节盘子
+https://huaban.com/search/?q=圣诞节盘子
+https://huaban.com/search/?q=复活节盘子
+https://huaban.com/search/?q=情人节盘子
+https://huaban.com/search/?q=独立日盘子</pre>
+<div style="font-size:12px;color:#888">打不开就去掉斜杠试 <code>https://huaban.com/search?q=万圣节盘子</code>；若要求登录先登录。</div></li>
+<li>页面打开、缩略图出来后，点收藏栏「<b>花瓣捕获</b>」。它会<b>自动滚动加载</b>并抓取本页所有花瓣图、<b>自动下载</b>成 <code>&lt;hash&gt;.webp</code>。</li>
+<li>浏览器右上角弹“是否允许下载多个文件”→ 点<b>「允许」</b>（必须，否则只下一张）。左上角绿框显示“本页匹配 N 张 / 累计 M 张”。</li>
+<li><b>6 个页面各跑一遍</b>。绿框里的数字是累计（跨页用浏览器 localStorage 累加，不会丢）。</li>
+</ol>
+
+<h3>三、导出元数据 + 交给我</h3>
+<ol style="font-size:14px">
+<li>跑完 6 页后，在任意一个花瓣页点绿框里的「<b>下载全部元数据JSON</b>」→ 得到 <code>huaban_capture.json</code>（含每张图的 hash / 原地址 / 来源 pin 页 / 节日）。也可用「复制全部」直接复制。</li>
+<li>把两样东西给我：
+  <ul>
+    <li>① <code>huaban_capture.json</code>（或复制的文本）；</li>
+    <li>② 下载文件夹里那批 <code>.webp</code> 文件（整堆拖进仓库 <code>images/huaban/</code>，或本地 git 提交）。</li>
+  </ul></li>
+<li>跟我说“盘子类抓好了”→ 我跑 <code>rebuild_huaban.py</code>，把工作台花瓣网板块整体替换成这批“节日+盘子”图（按节日归类、图指向本地）、提交发布。<b>之后永久有图，不受花瓣签名过期影响。</b></li>
+</ol>
+
+<p style="color:#888;font-size:13px;border-top:1px solid #eee;padding-top:12px">原理：沙箱被花瓣 CDN 封（567）且页面过不了人机验证，所以图字节和搜索结果都只能在你本机浏览器取。捕获书签在你浏览器里抓取+下载，再用元数据 JSON 交回给我重建工作台。跨页累计靠浏览器 localStorage（同一 huaban.com 域下保留），所以 6 页要都在花瓣网内跑。</p>
+
+<script type="text/plain" id="bmcode">
+(function(){
+  var KEY='huaban_capture_v1';
+  function getQ(){var m=location.search.match(/[?&]q=([^&]+)/);return m?decodeURIComponent(m[1]):'';}
+  function stripHoliday(q){var p=['盘子','餐盘','杯子','杯','餐具','碗','餐碗','桌布','餐垫','cutlery','plates','plate','cups','cup'];var h=q;p.forEach(function(x){h=h.split(x).join('');});return h||q;}
+  function rank(u){if(/fw658|fw720|fw960|fw1000/.test(u))return 5;if(/fw240|fw320|fw336/.test(u))return 4;if(/crop/.test(u))return 3;if(/sq\d/.test(u))return 1;return 2;}
+  function filekey(u){var m=u.match(/([0-9a-f]{40}-[A-Za-z0-9]+)_/);return m?m[1]:null;}
+  var map={};
+  function add(u,src){var k=filekey(u);if(!k)return;if(!map[k]||rank(u)>rank(map[k].url))map[k]={hash:k,url:u,source:src||''};}
+  var q=getQ();var holiday=stripHoliday(q);
+  [].forEach.call(document.images,function(im){
+    var src='';var a=im.closest?im.closest('a'):null;if(a&&/pins\/\d+/.test(a.href||''))src=a.href;
+    add(im.src,src);add(im.getAttribute('data-src'),src);
+    var ss=im.getAttribute('srcset');if(ss)ss.split(',').forEach(function(p){add(p.trim().split(/\s+/)[0],src);});
+  });
+  [].forEach.call(document.querySelectorAll('[style]'),function(el){
+    var ms=(el.getAttribute('style')||'').match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g);
+    if(ms)ms.forEach(function(x){add(x.replace(/.*url\(\s*['"]?/,'').replace(/['"]?\s*\)\s*$/,''),'');});
+  });
+  try{var raw=document.documentElement.innerHTML.replace(/\\\//g,'/');var re=/[a-z0-9.\-]*hbimg[^"'\s<>\\]*/g,mm;while((mm=re.exec(raw)))add('https://'+mm[0],'');}catch(e){}
+  var keys=Object.keys(map);
+  keys.forEach(function(k){map[k].q=q;map[k].holiday=holiday;map[k].title=q;});
+  var all={};try{var ex=JSON.parse(localStorage.getItem(KEY)||'{}');Object.keys(ex).forEach(function(k){all[k]=ex[k];});}catch(e){}
+  var added=0;keys.forEach(function(k){if(!all[k]){all[k]=map[k];added++;}});
+  try{localStorage.setItem(KEY,JSON.stringify(all));}catch(e){}
+  var total=Object.keys(all).length;
+  (function dl(i){if(i>=keys.length)return;var a=document.createElement('a');a.href=map[keys[i]].url;a.download=keys[i]+'.webp';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){dl(i+1);},300);})(0);
+  var box=document.createElement('div');
+  box.style.cssText='position:fixed;left:12px;top:12px;z-index:2147483647;background:#000d;color:#0f0;padding:12px 14px;border-radius:10px;font:13px/1.5 monospace;max-width:380px';
+  box.innerHTML='本页匹配 <b>'+keys.length+'</b> 张（新增 '+added+'，累计 '+total+'）。<br>图片已自动下载（若弹“允许多次下载”请点允许）。<br><button id="exp" style="margin-top:8px;padding:6px 10px;cursor:pointer">下载全部元数据JSON('+total+')</button> <button id="cp" style="margin-top:8px;padding:6px 10px;cursor:pointer">复制全部</button><br><span style="color:#aaa;font-size:11px">在 6 个“节日+盘子”搜索页各跑一次，最后点“下载全部元数据”导出，把 JSON 和 .webp 图一起交给助手。</span>';
+  document.body.appendChild(box);
+  box.querySelector('#exp').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(Object.keys(all).map(function(k){return all[k];}))],{type:'application/json'}));a.download='huaban_capture.json';a.click();};
+  box.querySelector('#cp').onclick=function(){navigator.clipboard.writeText(JSON.stringify(Object.keys(all).map(function(k){return all[k];}))).then(function(){alert('已复制 '+total+' 条');});};
+})();
+</script>
+<script>
+var code=document.getElementById('bmcode').textContent;
+var href='javascript:'+code.replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,' ').replace(/\t/g,' ');
+document.getElementById('bm').href=href;
+</script>
+</body></html>
