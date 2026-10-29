@@ -50,6 +50,14 @@ JS = r"""(function(){
       var m=(el.getAttribute('style')||'').match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g);
       if(m){ m.forEach(function(x){ var u=x.replace(/.*url\(\s*['"]?/,'').replace(/['"]?\s*\)\s*$/,''); add(u); }); }
     });
+    [].forEach.call(document.querySelectorAll('iframe'),function(f){
+      try{ var d=f.contentDocument; if(d){ [].forEach.call(d.images,function(im){ add(im.src); add(im.getAttribute('data-src')); }); } }catch(e){}
+    });
+    try{
+      var raw=document.documentElement.innerHTML.replace(/\\\//g,'/');
+      var re=/[a-z0-9.\-]*hbimg[^"'\s<>\\]*/g, m2;
+      while((m2=re.exec(raw))){ add('https://'+m2[0]); }
+    }catch(e){}
   }
   var box=document.createElement('div');
   box.style.cssText='position:fixed;left:12px;top:12px;z-index:2147483647;background:#000d;color:#0f0;padding:10px 14px;border-radius:10px;font:14px/1.5 monospace;max-width:340px';
@@ -62,7 +70,12 @@ JS = r"""(function(){
   function load(){
     box.textContent='正在收集图片…'; collect();
     var keys=Object.keys(best);
-    if(!keys.length){ box.textContent='本页没匹配到花瓣图：请在花瓣搜索/发现页、图片已加载后运行'; return; }
+    if(!keys.length){
+      var im0=document.images[0];
+      var sample=im0?String(im0.src||im0.getAttribute('data-src')||'(空src)').slice(0,110):'页面0张img';
+      box.innerHTML='<div style="color:#f66">✗ 没匹配到白名单图</div><div style="color:#aaa;font-size:12px;margin-top:6px">诊断：本页img数='+document.images.length+'<br>样例: '+sample+'<br><br>①确认打开的是指定6个搜索页之一(别用首页/别的关键词)<br>②等图片显示出来再点书签<br>③还不行就把本截图发给助手</div>';
+      return;
+    }
     if(!confirm('将下载 '+keys.length+' 张花瓣图（白名单共 '+WL.length+' 张）。\n点“确定”开始，浏览器可能要求“允许多次下载”。')){ box.textContent='已取消'; return; }
     var i=0;
     (function next(){
