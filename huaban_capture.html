@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>安装「花瓣捕获」书签（节日+盘子）</title></head>
+<title>安装「花瓣捕获·带热度」书签（节日+盘子）</title></head>
 <body style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.85;color:#222">
-<h2>安装「花瓣捕获」书签（抓“节日+盘子”图）</h2>
+<h2>安装「花瓣捕获·带热度」书签（抓“节日+盘子”图 + 热度）</h2>
 <p>橙色按钮是<b>书签链接</b>。<b>按住拖到浏览器收藏夹栏</b>松手即装好，<u>不用复制代码</u>。</p>
 <p style="background:#fff7e6;border:1px solid #ffd591;padding:10px 14px;border-radius:8px;font-size:14px">⚠️ 直接<b>拖</b>，<b>别右键复制链接/手动粘贴</b>，会弄坏代码。</p>
 <div style="text-align:center;margin:26px 0">
@@ -12,67 +12,94 @@
 <h3>一、装书签（只做一次）</h3>
 <ol style="font-size:14px">
 <li><b>显示收藏夹栏</b>：Chrome/Edge 按 <code>Ctrl+Shift+B</code>（Mac <code>Cmd+Shift+B</code>）；Firefox 菜单 ☰ → 书签 → 勾「书签工具栏」。</li>
-<li>鼠标左键按住上面蓝色按钮，拖到收藏夹栏松手。栏里出现「花瓣捕获」即装好。</li>
+<li>鼠标左键按住上面蓝色按钮，拖到收藏夹栏松手。栏里出现「花瓣捕获」即装好（覆盖旧的可删掉旧的）。</li>
 </ol>
 
-<h3>二、在 6 个“节日+盘子”搜索页各跑一次</h3>
+<h3>二、在 3 个“节日+盘子”搜索页各跑一次（复活节/情人节/独立日暂不做）</h3>
 <ol style="font-size:14px">
 <li>地址栏逐个打开（每行一个，整段粘贴回车）：
 <pre style="background:#f5f5f5;padding:10px;border-radius:6px;font-size:12px;white-space:pre-wrap">https://huaban.com/search/?q=万圣节盘子
 https://huaban.com/search/?q=感恩节盘子
-https://huaban.com/search/?q=圣诞节盘子
-https://huaban.com/search/?q=复活节盘子
-https://huaban.com/search/?q=情人节盘子
-https://huaban.com/search/?q=独立日盘子</pre>
+https://huaban.com/search/?q=圣诞节盘子</pre>
 <div style="font-size:12px;color:#888">打不开就去掉斜杠试 <code>https://huaban.com/search?q=万圣节盘子</code>；若要求登录先登录。</div></li>
-<li>页面打开、缩略图出来后，点收藏栏「<b>花瓣捕获</b>」。它会<b>自动滚动加载</b>并抓取本页所有花瓣图、<b>自动下载</b>成 <code>&lt;hash&gt;.webp</code>。</li>
-<li>浏览器右上角弹“是否允许下载多个文件”→ 点<b>「允许」</b>（必须，否则只下一张）。左上角绿框显示“本页匹配 N 张 / 累计 M 张”。</li>
-<li><b>6 个页面各跑一遍</b>。绿框里的数字是累计（跨页用浏览器 localStorage 累加，不会丢）。</li>
+<li>页面打开、缩略图出来后，点收藏栏「<b>花瓣捕获</b>」。它会<b>自动滚动加载</b>并抓取本页所有花瓣图、<b>自动下载</b>成 <code>&lt;hash&gt;.webp</code>，并<b>顺带抓取每张的热度</b>（采集/喜欢数）。</li>
+<li>浏览器右上角弹“是否允许下载多个文件”→ 点<b>「允许」</b>。左上角绿框显示“本页匹配 N 张 / 本页热度命中 M/N / 累计 K 张”。</li>
+<li><b>3 个页面各跑一遍</b>。绿框里的数字是累计（跨页用浏览器 localStorage 累加，不会丢）。</li>
 </ol>
 
 <h3>三、导出元数据 + 交给我</h3>
 <ol style="font-size:14px">
-<li>跑完 6 页后，在任意一个花瓣页点绿框里的「<b>下载全部元数据JSON</b>」→ 得到 <code>huaban_capture.json</code>（含每张图的 hash / 原地址 / 来源 pin 页 / 节日）。也可用「复制全部」直接复制。</li>
+<li>跑完 3 页后，在任意一个花瓣页点绿框里的「<b>下载全部元数据JSON</b>」→ 得到 <code>huaban_capture.json</code>（含每张图的 hash / 原地址 / 来源 pin 页 / 节日 / 热度 / 诊断）。也可用「复制全部」直接复制。</li>
 <li>把两样东西给我：
   <ul>
     <li>① <code>huaban_capture.json</code>（或复制的文本）；</li>
     <li>② 下载文件夹里那批 <code>.webp</code> 文件（整堆拖进仓库 <code>images/huaban/</code>，或本地 git 提交）。</li>
   </ul></li>
-<li>跟我说“盘子类抓好了”→ 我跑 <code>rebuild_huaban.py</code>，把工作台花瓣网板块整体替换成这批“节日+盘子”图（按节日归类、图指向本地）、提交发布。<b>之后永久有图，不受花瓣签名过期影响。</b></li>
+<li>跟我说“盘子类抓好了”→ 我跑 <code>rebuild_huaban.py</code>，把工作台花瓣网板块整体替换成这批“节日+盘子”图（按节日归类、图指向本地、<b>有热度的填“收藏热度”证据</b>）、提交发布。</li>
 </ol>
 
-<p style="color:#888;font-size:13px;border-top:1px solid #eee;padding-top:12px">原理：沙箱被花瓣 CDN 封（567）且页面过不了人机验证，所以图字节和搜索结果都只能在你本机浏览器取。捕获书签在你浏览器里抓取+下载，再用元数据 JSON 交回给我重建工作台。跨页累计靠浏览器 localStorage（同一 huaban.com 域下保留），所以 6 页要都在花瓣网内跑。</p>
+<p style="color:#888;font-size:13px;border-top:1px solid #eee;padding-top:12px">本次会重新下载图（覆盖同名，无害），目的是让抓到的 hash 与图 100% 对齐，同时带回每张图的热度（花瓣网采集/喜欢数）。绿框里的“热度命中”若明显偏低（比如 &lt;50%），多半是花瓣网页面结构变了，把 JSON 发我，我从里面的诊断字段校准选择器后再让你跑一次。</p>
 
 <script type="text/plain" id="bmcode">
 (function(){
-  var KEY='huaban_capture_v1';
+  var KEY='huaban_capture_v2';
   function getQ(){var m=location.search.match(/[?&]q=([^&]+)/);return m?decodeURIComponent(m[1]):'';}
   function stripHoliday(q){var p=['盘子','餐盘','杯子','杯','餐具','碗','餐碗','桌布','餐垫','cutlery','plates','plate','cups','cup'];var h=q;p.forEach(function(x){h=h.split(x).join('');});return h||q;}
-  function rank(u){if(/fw658|fw720|fw960|fw1000/.test(u))return 5;if(/fw240|fw320|fw336/.test(u))return 4;if(/crop/.test(u))return 3;if(/sq\d/.test(u))return 1;return 2;}
+  function rank(u){if(!u||typeof u!=='string')return 0;if(/fw658|fw720|fw960|fw1000/.test(u))return 5;if(/fw240|fw320|fw336/.test(u))return 4;if(/crop/.test(u))return 3;if(/sq\d/.test(u))return 1;return 2;}
   function filekey(u){if(!u||typeof u!=='string')return null;var m=u.match(/([0-9a-f]{40}-[A-Za-z0-9]+)_/);return m?m[1]:null;}
+  function closestA(el){if(!el||!el.closest)return null;try{return el.closest('a');}catch(e){return null;}}
+  function getHeat(img){
+    if(!img)return {heat:'',src:''};
+    var chain=[];var p=img;
+    try{for(var d=0;d<8&&p;d++){chain.push(p);p=p.parentElement;}}catch(e){}
+    for(var i=0;i<chain.length;i++){
+      var di=null;try{di=chain[i].getAttribute&&chain[i].getAttribute('data-info');}catch(e){}
+      if(di){try{var o=JSON.parse(di.replace(/&quot;/g,'"').replace(/&amp;/g,'&'));var v=o.like_count!=null?o.like_count:(o.repin_count!=null?o.repin_count:(o.save_count!=null?o.save_count:(o.collect_count!=null?o.collect_count:null)));if(v!=null&&v!=='')return {heat:String(v),src:'data-info'};}catch(e){}}
+    }
+    for(var i=0;i<chain.length;i++){
+      var nodes=[];try{nodes=chain[i].querySelectorAll?chain[i].querySelectorAll('[class*="like"],[class*="repin"],[class*="save"],[class*="collect"],[class*="count"],[class*="stat"],[class*="hot"]'):[];}catch(e){}
+      for(var n=0;n<nodes.length;n++){var t='';try{t=(nodes[n].getAttribute('title')||nodes[n].textContent||'');}catch(e){}var m=t.match(/[\d.]+[kK万+]?/);if(m)return {heat:m[0],src:'class'};}
+    }
+    for(var i=0;i<chain.length;i++){
+      var tx='';try{tx=chain[i].textContent||'';}catch(e){}
+      var m=tx.match(/(采集|喜欢|收藏|赞|♡|❤|❤️)\D*?([\d.]+[kK万+]?)/);
+      if(m)return {heat:m[2],src:'text'};
+    }
+    return {heat:'',src:''};
+  }
+  function diag(img){
+    var p=img,box=null;
+    try{for(var d=0;d<8&&p;d++){if(p.className&&/pin|item|card|board|cell/i.test(p.className)){box=p;break;}p=p.parentElement;}}catch(e){}
+    if(!box){try{box=img.parentElement;}catch(e){}}
+    var nums=[];try{nums=(box.textContent||'').replace(/\s+/g,' ').match(/[\d.]+[kK万+]?/g)||[];}catch(e){}
+    var di=false;try{di=!!(box&&box.getAttribute&&box.getAttribute('data-info'));}catch(e){}
+    var cls='';try{cls=box?('<'+box.tagName.toLowerCase()+'.'+String(box.className||'').slice(0,50)):'';}catch(e){}
+    return {cls:cls,nums:nums.slice(0,15),di:di};
+  }
   var map={};
-  function add(u,src){if(!u||typeof u!=='string')return;var k=filekey(u);if(!k)return;if(!map[k]||rank(u)>rank(map[k].url))map[k]={hash:k,url:u,source:src||''};}
+  function add(u,src,img){if(!u||typeof u!=='string')return;var k=filekey(u);if(!k)return;var h=getHeat(img||null);var d=diag(img||null);var rec=map[k];if(!rec||rank(u)>rank(rec.url)){map[k]={hash:k,url:u,source:src||'',q:'',holiday:'',title:'',heat:h.heat,heat_src:h.src,raw:JSON.stringify(d)};}}
   var q=getQ();var holiday=stripHoliday(q);
   [].forEach.call(document.images,function(im){
-    var src='';var a=im.closest?im.closest('a'):null;if(a&&/pins\/\d+/.test(a.href||''))src=a.href;
-    add(im.src,src);add(im.getAttribute('data-src'),src);
-    var ss=im.getAttribute('srcset');if(ss)ss.split(',').forEach(function(p){add(p.trim().split(/\s+/)[0],src);});
+    var src='';var a=closestA(im);if(a&&/pins\/\d+/.test(a.href||''))src=a.href;
+    add(im.src,src,im);add(im.getAttribute('data-src'),src,im);
+    var ss=im.getAttribute('srcset');if(ss)ss.split(',').forEach(function(p){add(p.trim().split(/\s+/)[0],src,im);});
   });
   [].forEach.call(document.querySelectorAll('[style]'),function(el){
     var ms=(el.getAttribute('style')||'').match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g);
     if(ms)ms.forEach(function(x){add(x.replace(/.*url\(\s*['"]?/,'').replace(/['"]?\s*\)\s*$/,''),'');});
   });
-  try{var raw=document.documentElement.innerHTML.replace(/\\\//g,'/');var re=/[a-z0-9.\-]*hbimg[^"'\s<>\\]*/g,mm;while((mm=re.exec(raw)))add('https://'+mm[0],'');}catch(e){}
+  try{var raw=document.documentElement.innerHTML.replace(/\\\//g,'/');var re=/[a-z0-9.\-]*hbimg[^"'\s<>\\]*/g,mm;while((mm=re.exec(raw)))add('https://'+mm[0],'',null);}catch(e){}
   var keys=Object.keys(map);
   keys.forEach(function(k){map[k].q=q;map[k].holiday=holiday;map[k].title=q;});
   var all={};try{var ex=JSON.parse(localStorage.getItem(KEY)||'{}');Object.keys(ex).forEach(function(k){all[k]=ex[k];});}catch(e){}
   var added=0;keys.forEach(function(k){if(!all[k]){all[k]=map[k];added++;}});
   try{localStorage.setItem(KEY,JSON.stringify(all));}catch(e){}
   var total=Object.keys(all).length;
+  var heatHit=0;keys.forEach(function(k){if(map[k].heat)heatHit++;});
   function saveBlob(b,n){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},3000);}
   var box=document.createElement('div');
-  box.style.cssText='position:fixed;left:12px;top:12px;z-index:2147483647;background:#000d;color:#0f0;padding:12px 14px;border-radius:10px;font:13px/1.5 monospace;max-width:420px';
-  box.innerHTML='本页匹配 <b>'+keys.length+'</b> 张（新增 '+added+'，累计 '+total+'）。<br><span id="pg">准备下载…</span><br><button id="exp" style="margin-top:8px;padding:6px 10px;cursor:pointer">下载全部元数据JSON('+total+')</button> <button id="cp" style="margin-top:8px;padding:6px 10px;cursor:pointer">复制全部</button><div id="fl" style="color:#fa0;font-size:11px;max-height:150px;overflow:auto"></div><br><span style="color:#aaa;font-size:11px">在 6 个“节日+盘子”搜索页各跑一次，最后点“下载全部元数据”导出，把 JSON 和 .webp 图一起交给助手。</span>';
+  box.style.cssText='position:fixed;left:12px;top:12px;z-index:2147483647;background:#000d;color:#0f0;padding:12px 14px;border-radius:10px;font:13px/1.5 monospace;max-width:440px';
+  box.innerHTML='本页匹配 <b>'+keys.length+'</b> 张（新增 '+added+'，累计 '+total+'）。<br>本页热度命中 <b>'+heatHit+'</b>/'+keys.length+'。<br><span id="pg">准备下载…</span><br><button id="exp" style="margin-top:8px;padding:6px 10px;cursor:pointer">下载全部元数据JSON('+total+')</button> <button id="cp" style="margin-top:8px;padding:6px 10px;cursor:pointer">复制全部</button><div id="fl" style="color:#fa0;font-size:11px;max-height:150px;overflow:auto"></div><br><span style="color:#aaa;font-size:11px">在“节日+盘子”搜索页跑，最后点“下载全部元数据”导出，把 JSON 和 .webp 图一起交给助手。本次会重新下载图并抓取热度。</span>';
   document.body.appendChild(box);
   box.querySelector('#exp').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(Object.keys(all).map(function(k){return all[k];}))],{type:'application/json'}));a.download='huaban_capture.json';a.click();};
   box.querySelector('#cp').onclick=function(){navigator.clipboard.writeText(JSON.stringify(Object.keys(all).map(function(k){return all[k];}))).then(function(){alert('已复制 '+total+' 条');});};

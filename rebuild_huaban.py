@@ -42,6 +42,24 @@ def filekey(u):
     return m.group(1) if m else None
 
 
+def parse_heat(s):
+    """把花瓣网热度展示值（如 '1.2k' / '345' / '1.2万'）转成数值，供排序。"""
+    if not s:
+        return 0.0
+    s = str(s).strip().lower()
+    try:
+        mult = 1
+        if s.endswith("k"):
+            mult = 1000; s = s[:-1]
+        elif s.endswith("w") or s.endswith("万"):
+            mult = 10000; s = s[:-1]
+        elif s.endswith("m"):
+            mult = 1000000; s = s[:-1]
+        return float(s) * mult
+    except Exception:
+        return 0.0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("capture", help="huaban_capture.json 路径")
@@ -83,22 +101,30 @@ def main():
             pass
         holiday = r.get("holiday") or (r.get("q", "").replace("盘子", "") if r.get("q") else "")
         title = r.get("title") or r.get("q") or holiday
+        heat = r.get("heat") or ""
+        heat_src = r.get("heat_src") or ""
+        if heat:
+            etype, evalue, enote = ("收藏热度", str(heat),
+                                    "花瓣网热度（%s）：%s" % (heat_src or "未知", heat))
+        else:
+            etype, evalue, enote = "无", "", ""
         rec = {
             "id": 0, "year": "2026", "holiday": holiday, "platform": "花瓣网",
             "design_type": "", "title": title,
             "source_url": r.get("source") or "",
-            "brand": "", "asin": "", "price": "", "evidence_type": "无",
-            "evidence_value": "", "evidence_note": "",
+            "brand": "", "asin": "", "price": "", "evidence_type": etype,
+            "evidence_value": evalue, "evidence_note": enote,
             "collected_by": "花瓣网捕获书签", "collected_at": today,
             "tags": "", "note": "", "favorite": False, "file": "",
             "thumb": "", "width": w, "height": hh, "bytes": b, "hash": h,
             "holiday_reason": "搜索词含「%s」" % holiday,
             "material": "", "color": "", "composition": "",
-            "review_status": "", "tier": 2, "heat": 0.0, "img": "",
+            "review_status": "", "tier": 2, "heat": parse_heat(heat), "img": "",
         }
         new.append(rec)
 
-    print("有本地图可写入:", len(new), " | 缺图:", len(missing))
+    heat_hit = sum(1 for r in new if r["evidence_type"] == "收藏热度")
+    print("有本地图可写入:", len(new), " | 其中带热度证据:", heat_hit, " | 缺图:", len(missing))
     if missing:
         print("缺图 hash 样例(需补抓):", missing[:12])
 
@@ -128,8 +154,8 @@ def main():
     try:
         subprocess.run(["git", "add", *FILES.keys(), IMG_DIR], check=False)
         subprocess.run(["git", "commit", "-q", "-m",
-                        "花瓣网板块重做为“节日+盘子”：捕获书签抓取%d张本地托管，四份副本同步(旧%d→新%d)"
-                        % (len(new), old_hb, len(new))], check=False)
+                        "花瓣网板块重做为“节日+盘子”：捕获书签抓取%d张本地托管，其中%d张带花瓣网热度证据，四份副本同步(旧%d→新%d)"
+                        % (len(new), heat_hit, old_hb, len(new))], check=False)
         print("已 git 提交")
     except Exception as e:
         print("提交出错:", e)
