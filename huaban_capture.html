@@ -49,9 +49,9 @@ https://huaban.com/search/?q=独立日盘子</pre>
   function getQ(){var m=location.search.match(/[?&]q=([^&]+)/);return m?decodeURIComponent(m[1]):'';}
   function stripHoliday(q){var p=['盘子','餐盘','杯子','杯','餐具','碗','餐碗','桌布','餐垫','cutlery','plates','plate','cups','cup'];var h=q;p.forEach(function(x){h=h.split(x).join('');});return h||q;}
   function rank(u){if(/fw658|fw720|fw960|fw1000/.test(u))return 5;if(/fw240|fw320|fw336/.test(u))return 4;if(/crop/.test(u))return 3;if(/sq\d/.test(u))return 1;return 2;}
-  function filekey(u){var m=u.match(/([0-9a-f]{40}-[A-Za-z0-9]+)_/);return m?m[1]:null;}
+  function filekey(u){if(!u||typeof u!=='string')return null;var m=u.match(/([0-9a-f]{40}-[A-Za-z0-9]+)_/);return m?m[1]:null;}
   var map={};
-  function add(u,src){var k=filekey(u);if(!k)return;if(!map[k]||rank(u)>rank(map[k].url))map[k]={hash:k,url:u,source:src||''};}
+  function add(u,src){if(!u||typeof u!=='string')return;var k=filekey(u);if(!k)return;if(!map[k]||rank(u)>rank(map[k].url))map[k]={hash:k,url:u,source:src||''};}
   var q=getQ();var holiday=stripHoliday(q);
   [].forEach.call(document.images,function(im){
     var src='';var a=im.closest?im.closest('a'):null;if(a&&/pins\/\d+/.test(a.href||''))src=a.href;
