@@ -69,13 +69,23 @@ https://huaban.com/search/?q=独立日盘子</pre>
   var added=0;keys.forEach(function(k){if(!all[k]){all[k]=map[k];added++;}});
   try{localStorage.setItem(KEY,JSON.stringify(all));}catch(e){}
   var total=Object.keys(all).length;
-  (function dl(i){if(i>=keys.length)return;var a=document.createElement('a');a.href=map[keys[i]].url;a.download=keys[i]+'.webp';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){dl(i+1);},300);})(0);
+  function saveBlob(b,n){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},3000);}
   var box=document.createElement('div');
-  box.style.cssText='position:fixed;left:12px;top:12px;z-index:2147483647;background:#000d;color:#0f0;padding:12px 14px;border-radius:10px;font:13px/1.5 monospace;max-width:380px';
-  box.innerHTML='本页匹配 <b>'+keys.length+'</b> 张（新增 '+added+'，累计 '+total+'）。<br>图片已自动下载（若弹“允许多次下载”请点允许）。<br><button id="exp" style="margin-top:8px;padding:6px 10px;cursor:pointer">下载全部元数据JSON('+total+')</button> <button id="cp" style="margin-top:8px;padding:6px 10px;cursor:pointer">复制全部</button><br><span style="color:#aaa;font-size:11px">在 6 个“节日+盘子”搜索页各跑一次，最后点“下载全部元数据”导出，把 JSON 和 .webp 图一起交给助手。</span>';
+  box.style.cssText='position:fixed;left:12px;top:12px;z-index:2147483647;background:#000d;color:#0f0;padding:12px 14px;border-radius:10px;font:13px/1.5 monospace;max-width:420px';
+  box.innerHTML='本页匹配 <b>'+keys.length+'</b> 张（新增 '+added+'，累计 '+total+'）。<br><span id="pg">准备下载…</span><br><button id="exp" style="margin-top:8px;padding:6px 10px;cursor:pointer">下载全部元数据JSON('+total+')</button> <button id="cp" style="margin-top:8px;padding:6px 10px;cursor:pointer">复制全部</button><div id="fl" style="color:#fa0;font-size:11px;max-height:150px;overflow:auto"></div><br><span style="color:#aaa;font-size:11px">在 6 个“节日+盘子”搜索页各跑一次，最后点“下载全部元数据”导出，把 JSON 和 .webp 图一起交给助手。</span>';
   document.body.appendChild(box);
   box.querySelector('#exp').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(Object.keys(all).map(function(k){return all[k];}))],{type:'application/json'}));a.download='huaban_capture.json';a.click();};
   box.querySelector('#cp').onclick=function(){navigator.clipboard.writeText(JSON.stringify(Object.keys(all).map(function(k){return all[k];}))).then(function(){alert('已复制 '+total+' 条');});};
+  var ok=0,fail=[];
+  (function dl(i){
+    if(i>=keys.length){
+      box.querySelector('#pg').textContent='完成：成功 '+ok+' / 失败 '+fail.length+'（若弹“允许多次下载”请点允许）';
+      if(fail.length){box.querySelector('#fl').innerHTML='失败图（点开新标签后右键→另存为）：<br>'+fail.slice(0,8).map(function(u){return '<a target="_blank" style="color:#7cf" href="'+u+'">'+u.slice(34,74)+'</a>';}).join('<br>');}
+      return;
+    }
+    var k=keys[i],u=map[k].url;
+    fetch(u,{mode:'cors'}).then(function(r){if(!r.ok)throw 0;return r.blob();}).then(function(b){saveBlob(b,k+'.webp');ok++;}).catch(function(){fail.push(u);}).then(function(){box.querySelector('#pg').textContent='下载中 '+(i+1)+'/'+keys.length+'（成功 '+ok+' / 失败 '+fail.length+'）';setTimeout(function(){dl(i+1);},150);});
+  })(0);
 })();
 </script>
 <script>
