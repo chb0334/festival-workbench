@@ -53,7 +53,9 @@ def main():
         cap = [r for pg in cap for r in pg]
     by = {}
     for r in cap:
-        h = r.get("hash") or filekey(r.get("url", ""))
+        raw = r.get("hash") or filekey(r.get("url", "")) or ""
+        m = re.match(r"[0-9a-f]{40}", raw or "")
+        h = m.group(0) if m else (raw.split("-")[0] if raw else "")
         if h:
             by[h] = r
     print("捕获去重后图片数:", len(by))
