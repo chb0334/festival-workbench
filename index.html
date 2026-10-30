@@ -98,6 +98,18 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
 .badge-ev.none{background:#5a544b;font-weight:400}
 .badge-plat{right:8px;top:8px;background:rgba(30,28,25,.72)}
 .badge-pending{position:absolute;right:8px;bottom:8px;background:#d97706;color:#fff;font-size:11px;border-radius:5px;padding:2px 7px;font-weight:600}
+.card-actions{display:flex;gap:6px;margin-top:7px}
+.card-actions .act{flex:1;border:none;border-radius:6px;padding:5px 0;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit;line-height:1.2}
+.card-actions .act.pass{background:#1c6b52;color:#fff}
+.card-actions .act.pass:hover{background:#155a44}
+.card-actions .act.rej{background:#fdf1ee;color:#a33a24;border:1px solid #e8cfc8}
+.card-actions .act.rej:hover{background:#f8e2dc}
+.review-stat{font-size:12px;color:var(--ink-3);padding:6px 2px 8px;line-height:1.7}
+.review-stat b{color:#d97706;font-size:13px}
+.review-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin:10px 2px 0;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412}
+.review-banner .sp{flex:1}
+.btn.pass{background:#1c6b52;border-color:#1c6b52;color:#fff}
+.btn.rej{background:#fdf1ee;border:1px solid #e8cfc8;color:#a33a24}
 /* 悬浮详情浮层 */
 .card-hover{position:absolute;left:0;right:0;bottom:0;background:rgba(20,17,14,.88);color:#f5f2ec;padding:9px 11px;font-size:11.5px;line-height:1.6;transform:translateY(102%);transition:transform .18s ease;max-height:78%;overflow-y:auto}
 .card:hover .card-hover,.card:focus-within .card-hover{transform:translateY(0)}
@@ -213,6 +225,9 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
       <h3 data-page-node-id="DQTt8Ez7sJKqP707boiLNo"><!--pnid:5jkIFwDiDms3aL0PhHOLZb-->其他</h3>
       <label data-page-node-id="P2mnXNgCl6Sh7IRjsVzaLA" class="checkline"><input data-page-node-id="rQKgxIqQt2AcEjXdgNEaBF" id="evidenceOnly" type="checkbox"><!--pnid:NEfI3uBYOwuvZD5TUGX2Iv--> 只看有证据</label>
       <label data-page-node-id="tJiKMJQW71Fv1lnNLYDsX2" class="checkline"><input data-page-node-id="SiM8Glaot0wlXDkaSNFLgU" id="pendingOnly" type="checkbox"><!--pnid:O02jnyXiJ5V22kgOiWY82Q--> 只看待人工审核</label>
+      <div class="review-stat" id="reviewStat"></div>
+      <button data-page-node-id="rbUndo" class="btn ghost small block" id="btnUndoReview">撤销上一次审核</button>
+      <button data-page-node-id="rbExp" class="btn ghost small block" id="btnExportReview">导出审核结果</button>
       <button data-page-node-id="cHIxirw8ILkEqQrHnOI8rs" class="btn ghost small block" id="btnReset"><!--pnid:ZOpTlIILMpNLGYkDMOWFZR-->清空筛选</button>
     </section>
   </aside>
@@ -220,6 +235,7 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
   <main data-page-node-id="Fl9mmofBEIeS1HOohlUK5v" class="main">
     <section data-page-node-id="sOMN2lJSmKMmf1LxYprzOH" class="summary-bar" id="summaryBar"></section>
     <div class="element-chips" id="elementChips" style="display:none"></div>
+    <div class="review-banner" id="reviewBanner" style="display:none"></div>
     <div data-page-node-id="20dum0FO7bCFPOfMBu62eN" class="toolbar">
       <div data-page-node-id="UcCWqgzoBrhCwLynsaq5Fz" class="result-info"><span data-page-node-id="P1iuh0ulQqIVyt8tcJqkTF" id="resultCount"><!--pnid:kBpLX41m2woBkTLMryuVnu-->0</span><!--pnid:kdVq9eetDQZYlI71IqtZny--> 张图片</div>
       <div data-page-node-id="lGuo6RejHLDR1nNthMIC93" class="toolbar-right">
@@ -260,7 +276,7 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
       <dl data-page-node-id="UGkjiSVD4iRJcxcZR8v7dc" class="meta-list" id="lbMeta"></dl>
       <div data-page-node-id="acg0SYpp7dxTgsMd5sA1jt" class="lb-tags" id="lbTags"></div>
       <p data-page-node-id="rirWndXTioAOB4EDw0gw5F" class="lb-note" id="lbNote"></p>
-      <div data-page-node-id="rdpjsWaqIy2ufFi2kEx1iU" class="lb-actions"><a data-page-node-id="Oi3oktEkpEx3D0wkXS1NlW" class="btn primary small" id="lbSource" rel="noopener" target="_blank"><!--pnid:68BND0HIGTZPHRDMnsGUXQ-->打开来源页</a></div>
+      <div data-page-node-id="rdpjsWaqIy2ufFi2kEx1iU" class="lb-actions"><a data-page-node-id="Oi3oktEkpEx3D0wkXS1NlW" class="btn primary small" id="lbSource" rel="noopener" target="_blank"><!--pnid:68BND0HIGTZPHRDMnsGUXQ-->打开来源页</a><button class="btn pass small" id="lbPass" data-act="pass" hidden>✓ 通过</button><button class="btn rej small" id="lbReject" data-act="reject" hidden>✗ 剔除</button><button class="btn ghost small" id="lbNext">下一条待审核 →</button></div>
     </div>
   </div>
 </div>
@@ -307,7 +323,7 @@ function matchesF(it, skip){
 function matches(it){ return matchesF(it, null); }
 function refresh(){
   state.items = sortItems(DATA.filter(matches));
-  renderSummary(); renderElementChips(); renderGrid(); buildSidebar(); buildScope();
+  renderSummary(); renderElementChips(); renderGrid(); buildSidebar(); buildScope(); renderReviewStat();
 }
 function buildScope(){
   var curYear=new Date().getFullYear();
@@ -391,6 +407,86 @@ function renderSummary(){
     '<div class="ts"><b>'+pct+'%</b><span>证据覆盖</span></div>'+
     '<div class="ts"><b>'+uniq(DATA.map(function(d){return d.platform;})).length+'</b><span>平台</span></div>';
 }
+var REVIEW_KEY="wb_review_v1";
+function loadReview(){ try{ return JSON.parse(localStorage.getItem(REVIEW_KEY)||"{}"); }catch(e){ return {}; } }
+function saveReview(r){ try{ localStorage.setItem(REVIEW_KEY, JSON.stringify(r)); }catch(e){} }
+var REVIEW = loadReview();
+var reviewStack = [];
+function pendingCount(){ var n=0; DATA.forEach(function(d){ if(d.review_status==="待人工审核") n++; }); return n; }
+function applyReview(){
+  Object.keys(REVIEW).forEach(function(id){
+    var it=DATA.find(function(x){ return String(x.id)===String(id); });
+    if(!it) return;
+    if(REVIEW[id].act==="pass"){ it.review_status="已人工审核"; }
+    else { var i=DATA.indexOf(it); if(i>=0) DATA.splice(i,1); }
+  });
+}
+function doReview(id, act){
+  var it=DATA.find(function(x){ return x.id===id; });
+  if(!it) return;
+  reviewStack.push({act:act, item:JSON.parse(JSON.stringify(it))});
+  REVIEW[String(id)]={act:act, at:new Date().toISOString()};
+  saveReview(REVIEW);
+  if(act==="pass"){
+    if(!it.holiday){
+      var m=/视觉复审剔除\(([^)]+)\)/.exec(it.holiday_reason||"");
+      if(m) it.holiday=m[1];
+    }
+    it.review_status="已人工审核";
+    it.review_note="人工通过于 "+new Date().toISOString().slice(0,10);
+  } else {
+    var i=DATA.indexOf(it); if(i>=0) DATA.splice(i,1);
+    var lb=$("#lightbox");
+    if(!lb.hidden){ nextPending(); renderReviewStat(); refresh(); return; }
+  }
+  renderReviewStat();
+  refresh();
+}
+function undoReview(){
+  var last=reviewStack.pop(); if(!last) return;
+  delete REVIEW[String(last.item.id)]; saveReview(REVIEW);
+  if(last.act==="pass"){
+    var it=DATA.find(function(x){ return x.id===last.item.id; });
+    if(it){ it.review_status=last.item.review_status; it.holiday=last.item.holiday; it.holiday_reason=last.item.holiday_reason; it.review_note=last.item.review_note; }
+  } else { DATA.push(last.item); }
+  renderReviewStat(); refresh();
+}
+function nextPending(){
+  var list=DATA.filter(function(d){ return d.review_status==="待人工审核"; });
+  if(!list.length){ $$(".modal").forEach(function(m){ m.hidden=true; }); state.current=null; return; }
+  openLightbox(list[0].id);
+}
+function exportReview(){
+  var ps=[], rj=[];
+  Object.keys(REVIEW).forEach(function(k){ (REVIEW[k].act==="pass"?ps:rj).push(Number(k)); });
+  var out={exported_at:new Date().toISOString(), passed:ps, rejected:rj, decisions:REVIEW};
+  var blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="人工审核结果_"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); },3000);
+}
+function renderReviewStat(){
+  var n=pendingCount(), done=0;
+  Object.keys(REVIEW).forEach(function(k){ if(REVIEW[k].act==="pass") done++; });
+  var el=$("#reviewStat");
+  if(el) el.innerHTML="待审核 <b>"+n+"</b> 条<br>本次已通过 "+done+" 条";
+  var bn=$("#reviewBanner");
+  if(bn){
+    if(state.filters.pending&&n>0){
+      bn.style.display="";
+      bn.innerHTML="审核模式：逐张确认，点 <b>✓ 通过</b> 保留，点 <b>✗ 剔除</b> 移出图池（剩余 "+n+" 条）<span class='sp'></span>"+
+        '<button class="btn ghost small" id="bnUndo">撤销上一次</button>';
+      var u=$("#bnUndo"); if(u) u.onclick=undoReview;
+    } else { bn.style.display="none"; bn.innerHTML=""; }
+  }
+  var lb=$("#lightbox");
+  if(lb&&!lb.hidden&&state.current){
+    var pend=state.current.review_status==="待人工审核";
+    ["lbPass","lbReject"].forEach(function(k){ var e2=$("#"+k); if(e2){ e2.hidden=!pend; e2.dataset.id=state.current.id; } });
+  }
+}
 function renderGrid(){
   $("#grid").className="grid density-"+state.density;
   $("#resultCount").textContent=state.items.length;
@@ -419,7 +515,11 @@ function renderGrid(){
       (pending?'<span class="badge-pending">待审核</span>':"")+
       hv+'</div>'+
       '<div class="card-body"><div class="card-title" title="'+esc(it.title||"")+'">'+esc(it.title||"（未命名）")+'</div>'+
-      (sub?'<div class="card-sub">'+esc(sub)+'</div>':"")+meter+'</div></article>';
+      (sub?'<div class="card-sub">'+esc(sub)+'</div>':"")+meter+
+      ((pending&&state.filters.pending)?('<div class="card-actions">'+
+        '<button class="act pass" data-act="pass" data-id="'+it.id+'">✓ 通过</button>'+
+        '<button class="act rej" data-act="reject" data-id="'+it.id+'">✗ 剔除</button></div>'):"")+
+      '</div></article>';
   }).join("");
 }
 function openLightbox(id){
@@ -437,6 +537,8 @@ function openLightbox(id){
     : '<div class="ec-k">证据</div><div class="ec-v">暂无</div><div class="ec-n">'+(it.evidence_note?esc(it.evidence_note):"建议补销量 / 点赞 / 收藏 / 转发数")+'</div>';
   var ltier=it.tier||0;var lec=ltier>=5?"#1c6b52":ltier===4?"#2f9e74":ltier===3?"#b45309":ltier===2?"#d97706":ltier===1?"#8c857a":"#b9b2a8";
   $("#lbMeter").innerHTML = ltier ? ('<span class="lbl" style="margin:0 8px 0 0">证据强度</span>'+function(){var s="";for(var k=1;k<=5;k++){s+='<span class="dot'+(k<=ltier?" on":"")+'"'+(k<=ltier?' style="background:'+lec+'"':"")+'></span>';}return s;}()+'<span class="lbl">'+ltier+'/5</span>') : '';
+  var _pend=it.review_status==="待人工审核";
+  ["lbPass","lbReject"].forEach(function(k){var e2=$("#"+k);if(e2){e2.hidden=!_pend;e2.dataset.id=it.id;}});
   var meta=[["归节日理由",it.holiday_reason],["材质",it.material],["颜色",it.color],["组成",it.composition],["品牌",it.brand],["ASIN",it.asin],["价格",it.price],["采集人",it.collected_by],["采集时间",it.collected_at],["尺寸",it.width?(it.width+"×"+it.height):""]].filter(function(r){return r[1];});
   $("#lbMeta").innerHTML=meta.map(function(r){return '<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>';}).join("");
   $("#lbTags").innerHTML=(it.tags||"").split(/[,，\s]+/).filter(Boolean).map(function(t){return '<span class="tag">#'+esc(t)+'</span>';}).join("");
@@ -451,6 +553,8 @@ function resetFilters(){
 }
 function bind(){
   document.addEventListener("click",function(e){
+    var ab=e.target.closest("[data-act]");
+    if(ab){ doReview(Number(ab.dataset.id), ab.dataset.act); return; }
     var sb=e.target.closest("[data-scope]");
     if(sb){state.filters[sb.dataset.scope]=sb.dataset.v;if(sb.dataset.scope==="holiday"&&ELEMENTS[sb.dataset.v]&&state.filters.element&&ELEMENTS[sb.dataset.v].indexOf(state.filters.element)<0)state.filters.element="";buildScope();refresh();return;}
     var fb=e.target.closest("[data-filter]");
@@ -464,6 +568,9 @@ function bind(){
   $("#monthSelect").addEventListener("change",function(e){state.filters.month=e.target.value;refresh();});
   $("#evidenceOnly").addEventListener("change",function(e){state.filters.has_evidence=e.target.checked;refresh();});
   $("#pendingOnly").addEventListener("change",function(e){state.filters.pending=e.target.checked;refresh();});
+  if($("#btnUndoReview"))$("#btnUndoReview").addEventListener("click",undoReview);
+  if($("#btnExportReview"))$("#btnExportReview").addEventListener("click",exportReview);
+  if($("#lbNext"))$("#lbNext").addEventListener("click",nextPending);
   $("#btnReset").addEventListener("click",resetFilters);
   if($("#emptyReset"))$("#emptyReset").addEventListener("click",resetFilters);
   $$(".density button").forEach(function(b){b.addEventListener("click",function(){$$(".density button").forEach(function(x){x.classList.remove("active");});b.classList.add("active");state.density=b.dataset.density;renderGrid();});});
@@ -472,10 +579,13 @@ function bind(){
     if($("#lightbox").hidden||!state.items.length)return;
     var idx=state.items.findIndex(function(x){return x.id===state.current.id;});
     if(e.key==="ArrowRight"&&idx<state.items.length-1)openLightbox(state.items[idx+1].id);
+    if(!state.current)return;
+    if(e.key==="p"||e.key==="P"){doReview(state.current.id,"pass");return;}
+    if(e.key==="x"||e.key==="X"){doReview(state.current.id,"reject");return;}
     if(e.key==="ArrowLeft"&&idx>0)openLightbox(state.items[idx-1].id);
   });
 }
-buildScope(); bind(); refresh();
+applyReview(); buildScope(); bind(); renderReviewStat(); refresh();
 </script>
 </body>
 </html>
