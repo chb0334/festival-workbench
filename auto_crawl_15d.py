@@ -68,9 +68,19 @@ def main():
     # 3) 花瓣网（常被 EdgeOne 挡，失败不影响整体）
     if not args.skip_huaban:
         steps.append(run([sys.executable, "crawl_huaban.py", "30"], 900, "花瓣网抓取"))
+        hb = steps[-1]
+        try:
+            d = json.load(io.open(os.path.join(WORK, "huaban_export.json"), encoding="utf-8"))
+            got = len(d) if isinstance(d, list) else 0
+        except Exception:
+            got = 0
+        if got == 0:
+            hb["ok"] = False
+            hb["err"] = (hb["err"] or "") + " | 花瓣网未产出有效素材（huaban_export.json 为空/无效，通常被人机验证拦截）"
+            print("    !! 花瓣网实际未抓到素材，记为失败", flush=True)
 
-    # 4) 入库去重
-    steps.append(run([sys.executable, "import_new_materials.py"], 900, "入库去重"))
+    # 4) 入库去重（--apply 必须带：脚本默认是 dry-run 预览，不写库！）
+    steps.append(run([sys.executable, "import_new_materials.py", "--apply"], 900, "入库去重"))
 
     after = count_items()
     added = (after - before) if (after >= 0 and before >= 0) else -1
@@ -93,7 +103,12 @@ def main():
         cm = run(["git", "commit", "-m", "周期自动抓取(15天): 新增%s条, 库存%s条" % (added, after)],
                  300, "git-commit")
         steps.append(cm)
-        steps.append(run(["git", "push", "origin", "main"], 900, "git-push"))
+        ps = None
+        for _try in range(3):  # 网络抖动常见，重试3次
+            ps = run(["git", "push", "origin", "main"], 600, "git-push" + ("" if _try == 0 else "(重试%s)" % _try))
+            if ps["ok"]:
+                break
+        steps.append(ps)
 
     # 8) 报告
     date = datetime.datetime.now().strftime("%Y-%m-%d")
