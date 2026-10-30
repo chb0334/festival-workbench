@@ -108,6 +108,11 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
 .card-actions .act.pass:hover{background:#155a44}
 .card-actions .act.rej{background:#fdf1ee;color:#a33a24;border:1px solid #e8cfc8}
 .card-actions .act.rej:hover{background:#f8e2dc}
+.card-actions{margin-top:auto}
+.card-actions .act.fav{background:#fdf6e3;color:#8a6d1f;border:1px solid #e8dcc0}
+.card-actions .act.fav:hover{background:#f5e9cd}
+.card-actions .act.fav.on{background:#d97706;color:#fff;border-color:#d97706}
+.card-actions .act.fav.on:hover{background:#c26a05}
 .review-stat{font-size:12px;color:var(--ink-3);padding:6px 2px 8px;line-height:1.7}
 .review-stat b{color:#d97706;font-size:13px}
 .review-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin:10px 2px 0;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;color:#9a3412}
@@ -121,7 +126,7 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
 .hv-k{flex-shrink:0;color:#e8b17a;font-weight:600;min-width:30px}
 .hv-v{color:#f5f2ec;word-break:break-all}
 .hv-ev{margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.22);color:#8fe0c0;font-weight:600}
-.card-body{padding:7px 10px 9px;min-height:96px}
+.card-body{padding:7px 10px 9px;min-height:128px;display:flex;flex-direction:column}
 .card-title{font-size:13px;font-weight:600;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card-sub{font-size:11.5px;color:var(--ink-3);margin-top:2px}
 .empty{text-align:center;padding:70px 20px;color:var(--ink-3)}
@@ -505,7 +510,12 @@ function toggleFav(id){
   var a=loadFavs(), k=String(id);
   if(it.favorite){ if(a.indexOf(k)<0) a.push(k); } else { a=a.filter(function(x){ return x!==k; }); }
   saveFavs(a);
-  renderGrid(); renderReviewStat();
+  if(state.filters.fav){ renderGrid(); } else {
+    var bs=document.querySelectorAll('[data-favid="'+id+'"]');
+    for(var _i=0;_i<bs.length;_i++){ var b=bs[_i]; b.classList.toggle("on",it.favorite);
+      if(b.classList.contains("act")){ b.innerHTML=it.favorite?"★ 已收藏":"☆ 收藏"; } else { b.innerHTML="★"; } }
+  }
+  renderReviewStat();
   var lf=$("#lbFav");
   if(lf&&state.current&&state.current.id===id){ lf.classList.toggle("on",it.favorite); lf.innerHTML=it.favorite?"★ 已收藏":"☆ 收藏"; }
 }
@@ -539,9 +549,11 @@ function renderGrid(){
       hv+'</div>'+
       '<div class="card-body"><div class="card-title" title="'+esc(it.title||"")+'">'+esc(it.title||"（未命名）")+'</div>'+
       (sub?'<div class="card-sub">'+esc(sub)+'</div>':"")+meter+
-      ((pending&&state.filters.pending)?('<div class="card-actions">'+
-        '<button class="act pass" data-act="pass" data-id="'+it.id+'">✓ 通过</button>'+
-        '<button class="act rej" data-act="reject" data-id="'+it.id+'">✗ 剔除</button></div>'):"")+
+      '<div class="card-actions">'+
+      ((pending&&state.filters.pending)?('<button class="act pass" data-act="pass" data-id="'+it.id+'">✓ 通过</button>'):"")+
+      '<button class="act fav'+(it.favorite?" on":"")+'" data-favid="'+it.id+'" title="收藏">'+(it.favorite?"★ 已收藏":"☆ 收藏")+'</button>'+
+      ((pending&&state.filters.pending)?('<button class="act rej" data-act="reject" data-id="'+it.id+'">✗ 剔除</button>'):"")+
+      '</div>'+
       '</div></article>';
   }).join("");
 }
