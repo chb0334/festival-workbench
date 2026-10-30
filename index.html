@@ -285,31 +285,35 @@ function sortItems(list){
   else if(s==="person") arr.sort(function(a,b){return String(a.collected_by||"").localeCompare(String(b.collected_by||"","zh"));});
   return arr;
 }
-function matches(it){
+function matchesF(it, skip){
   var f=state.filters;
-  if(f.year && it.year!==f.year) return false;
-  if(f.holiday && it.holiday!==f.holiday) return false;
-  if(f.month && monthOf(it)!==f.month) return false;
-  if(f.platform && it.platform!==f.platform) return false;
-  if(f.design_type && it.design_type!==f.design_type) return false;
-  if(f.evidence_type && it.evidence_type!==f.evidence_type) return false;
-  if(f.collected_by && it.collected_by!==f.collected_by) return false;
+  if(skip!=="year" && f.year && it.year!==f.year) return false;
+  if(skip!=="holiday" && f.holiday && it.holiday!==f.holiday) return false;
+  if(skip!=="month" && f.month && monthOf(it)!==f.month) return false;
+  if(skip!=="platform" && f.platform && it.platform!==f.platform) return false;
+  if(skip!=="design_type" && f.design_type && it.design_type!==f.design_type) return false;
+  if(skip!=="evidence_type" && f.evidence_type && it.evidence_type!==f.evidence_type) return false;
+  if(skip!=="collected_by" && f.collected_by && it.collected_by!==f.collected_by) return false;
   if(f.has_evidence && !(it.evidence_type && it.evidence_type!=="无" && it.evidence_value)) return false;
   if(f.pending && it.review_status!=="待人工审核") return false;
   if(f.q){var q=f.q.toLowerCase();var hay=[it.title,it.tags,it.brand,it.asin,it.note,it.holiday_reason,it.material,it.color,it.composition].filter(Boolean).join(" ").toLowerCase();if(hay.indexOf(q)<0)return false;}
   return true;
 }
+function matches(it){ return matchesF(it, null); }
 function refresh(){
   state.items = sortItems(DATA.filter(matches));
-  renderSummary(); renderGrid(); buildSidebar();
+  renderSummary(); renderGrid(); buildSidebar(); buildScope();
 }
 function buildScope(){
   var curYear=new Date().getFullYear();
   var years = uniq(DATA.map(function(d){return d.year;})).sort(function(a,b){return String(b).localeCompare(String(a));});
   var order = CFG.holidays||[];
   var holidays = uniq(DATA.map(function(d){return d.holiday;})).sort(function(a,b){var ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});
-  $("#yearChips").innerHTML = ["全部"].concat(years).map(function(y){var v=y==="全部"?"":y;return '<button class="chip '+(state.filters.year===v?"active":"")+'" data-scope="year" data-v="'+esc(v)+'">'+esc(y)+'</button>';}).join("");
-  $("#holidayChips").innerHTML = ["全部"].concat(holidays).map(function(h){var v=h==="全部"?"":h;return '<button class="chip '+(state.filters.holiday===v?"active":"")+'" data-scope="holiday" data-v="'+esc(v)+'">'+esc(h)+'</button>';}).join("");
+  var ym=counts("year","year"), hm=counts("holiday","holiday");
+  var ybase=DATA.filter(function(d){return matchesF(d,"year");}).length;
+  var hbase=DATA.filter(function(d){return matchesF(d,"holiday");}).length;
+  $("#yearChips").innerHTML = ["全部"].concat(years).map(function(y){var v=y==="全部"?"":y;var n=y==="全部"?ybase:(ym[y]||0);return '<button class="chip '+(state.filters.year===v?"active":"")+'" data-scope="year" data-v="'+esc(v)+'">'+esc(y)+'<span class="n">'+n+'</span></button>';}).join("");
+  $("#holidayChips").innerHTML = ["全部"].concat(holidays).map(function(h){var v=h==="全部"?"":h;var n=h==="全部"?hbase:(hm[h]||0);return '<button class="chip '+(state.filters.holiday===v?"active":"")+'" data-scope="holiday" data-v="'+esc(v)+'">'+esc(h)+'<span class="n">'+n+'</span></button>';}).join("");
   buildMonthOptions();
   }
 function buildMonthOptions(){
@@ -322,22 +326,27 @@ function buildMonthOptions(){
   })).join("");
 }
 
-function counts(key){
+function countsAll(key){
   var m={};
   DATA.forEach(function(d){var v=d[key]||"未填";m[v]=(m[v]||0)+1;});
+  return m;
+}
+function counts(key, skip){
+  var m={};
+  DATA.forEach(function(d){ if(!matchesF(d, skip||null)) return; var v=d[key]||"未填"; m[v]=(m[v]||0)+1; });
   return m;
 }
 function buildSidebar(){
   var groups=[["platform","platformChips"],["design_type","typeChips"],["evidence_type","evidenceChips"],["collected_by","personChips"]];
   groups.forEach(function(g){
-    var key=g[0], el=g[1], m=counts(key);
-    var opts = uniq(["全部"].concat(Object.keys(m)));
+    var key=g[0], el=g[1], mall=countsAll(key), m=counts(key,key), base=DATA.filter(function(d){return matchesF(d,key);}).length;
+    var opts = uniq(["全部"].concat(Object.keys(mall)));
     // 证据筛选：「无/未填」沉底
     if(key==="evidence_type"){ ["无","未填"].forEach(function(x){var ix=opts.indexOf(x); if(ix>=0){opts.splice(ix,1);opts.push(x);}}); }
     // 平台栏固定保留这两个平台入口（暂无数据时显示 0，采到数据后自动累加）
     if(key==="platform"){ ["花瓣网"].forEach(function(p){ if(opts.indexOf(p)<0) opts.push(p); }); }
     $("#"+el).innerHTML = opts.map(function(v){
-      var val=v==="全部"?"":v, n=v==="全部"?DATA.length:(m[v]||0);
+      var val=v==="全部"?"":v, n=v==="全部"?base:(m[v]||0);
       var cls=["chip",state.filters[key]===val?"active":"",n===0&&v!=="全部"?"zero":""].filter(Boolean).join(" ");
       return '<button class="'+cls+'" data-filter="'+key+'" data-v="'+esc(val)+'"><span>'+esc(v)+'</span><span class="n">'+n+'</span></button>';
     }).join("");
@@ -347,7 +356,7 @@ function renderSummary(){
   var total=state.items.length, all=DATA.length;
   var withEv=DATA.filter(function(d){return d.evidence_type&&d.evidence_type!=="无"&&d.evidence_value;}).length;
   var pct=all?Math.round(withEv/all*100):0;
-  var plat=counts("platform"); var platText=Object.keys(plat).map(function(k){return k+" "+plat[k];}).join(" · ");
+  var pm={}; state.items.forEach(function(d){var v=d.platform||"未填";pm[v]=(pm[v]||0)+1;}); var platText=Object.keys(pm).map(function(k){return k+" "+pm[k];}).join(" · ");
   $("#summaryBar").innerHTML =
     '<div><div class="sum-num"><b>'+total+'</b><span>张</span></div><div class="sum-scope">'+esc((state.filters.holiday||"全部节日")+" · "+(state.filters.year||"全部年份")+" · "+(state.filters.month||"全部月份"))+(total===all?"":'　·　全库 '+all)+'</div></div>'+
     '<div class="sum-metrics">'+
