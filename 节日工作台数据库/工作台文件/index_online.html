@@ -90,8 +90,8 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
 .grid.density-s{column-count:5}
 .card{display:inline-block;width:100%;margin:0 0 14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;break-inside:avoid;cursor:pointer;transition:.15s}
 .card:hover{box-shadow:var(--shadow);transform:translateY(-2px);border-color:var(--line-2)}
-.card-img{position:relative;overflow:hidden;background:#f1efe9}
-.card-img img{display:block;width:100%;height:auto}
+.card-img{position:relative;overflow:hidden;background:#f1efe9;aspect-ratio:1/1}
+.card-img img{display:block;width:100%;height:100%;object-fit:cover}
 .badge-ev,.badge-plat{position:absolute;font-size:11px;border-radius:5px;padding:2px 7px;color:#fff;font-weight:600;line-height:1.4}
 .badge-ev{left:8px;top:8px;background:var(--ok);max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .badge-ev.none{background:#5a544b;font-weight:400}
@@ -383,7 +383,7 @@ function renderGrid(){
     for(var k=1;k<=5;k++){ meter += '<span class="dot'+(k<=tier?" on":"")+'"'+(k<=tier?' style="background:'+ec+'"':"")+'></span>'; }
     meter += '<span class="lbl">证据强度 '+(tier||"—")+'/5</span></div>';
     var src = it.thumb || it.img;
-    var img = src ? '<img src="'+esc(src)+'" alt="'+esc(it.title||"")+'" loading="lazy" />' : '<div style="height:140px"></div>';
+    var img = src ? '<img src="'+esc(src)+'" alt="'+esc(it.title||"")+'" loading="lazy" />' : '<div style="height:100%"></div>';
     /* 悬浮详情：理由/材质/颜色/组成 + 证据 */
     var hv = '<div class="card-hover">';
     var rows = [["理由",it.holiday_reason],["材质",it.material],["颜色",it.color],["组成",it.composition]];
