@@ -233,6 +233,19 @@ body.theme-spring .summary-bar{border-left:4px solid var(--accent)}
 @keyframes confFall{0%{transform:translateY(-24px) rotate(0)}100%{transform:translateY(106vh) rotate(560deg)}}
 @media (prefers-reduced-motion:reduce){#confetti{display:none}}
 
+/* 手动录入弹窗 */
+#manualModal{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;}
+#manualModal[hidden]{display:none;}
+#manualModal .mm-back{position:absolute;inset:0;background:rgba(20,17,13,.5);}
+#manualModal .mm-body{position:relative;width:min(640px,92vw);max-height:88vh;overflow:auto;background:var(--card,#fff);border:1px solid var(--line,#e6ddcf);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+#manualModal h2{margin:0 0 4px;font-size:18px;}
+#manualModal .mm-sub{opacity:.7;font-size:13px;margin-bottom:12px;}
+#manualModal .drop{border:2px dashed #c8843c;border-radius:12px;padding:18px;text-align:center;color:#8a7c66;cursor:pointer;margin-bottom:10px;background:#fbf6ec;}
+#manualModal .drop.over{background:#f3e7d2;border-color:#a96a26;}
+#manualModal textarea{width:100%;min-height:120px;box-sizing:border-box;border:1px solid var(--line,#e6ddcf);border-radius:10px;padding:10px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical;}
+#manualModal .mm-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+#manualModal .mm-msg{margin-top:10px;font-size:13px;min-height:18px;}
+#manualModal .mm-tip{margin-top:12px;font-size:12px;opacity:.7;line-height:1.6;border-top:1px dashed var(--line,#e6ddcf);padding-top:10px;}
 </style>
 </head>
 <body data-page-node-id="9pIBzOUN9iJms64mHHDAxR">
@@ -270,7 +283,9 @@ body.theme-spring .summary-bar{border-left:4px solid var(--accent)}
       <div class="review-stat" id="reviewStat"></div>
       <button data-page-node-id="rbUndo" class="btn ghost small block" id="btnUndoReview">撤销上一次审核</button>
       <button data-page-node-id="rbExp" class="btn ghost small block" id="btnExportReview">导出审核结果</button>
-      <button data-page-node-id="cHIxirw8ILkEqQrHnOI8rs" class="btn ghost small block" id="btnReset"><!--pnid:ZOpTlIILMpNLGYkDMOWFZR-->清空筛选</button>
+      <button data-page-node-id="cHIxirw8ILkEqQrHnOI8rs" class="btn ghost small block" id="btnReset">
+      <button data-page-node-id="mmOpen" class="btn ghost small block" id="btnManualImport">📥 手动录入 / 导入</button>
+<!--pnid:ZOpTlIILMpNLGYkDMOWFZR-->清空筛选</button>
     </section>
   </aside>
 
@@ -320,6 +335,23 @@ body.theme-spring .summary-bar{border-left:4px solid var(--accent)}
       <p data-page-node-id="rirWndXTioAOB4EDw0gw5F" class="lb-note" id="lbNote"></p>
       <div data-page-node-id="rdpjsWaqIy2ufFi2kEx1iU" class="lb-actions"><a data-page-node-id="Oi3oktEkpEx3D0wkXS1NlW" class="btn primary small" id="lbSource" rel="noopener" target="_blank"><!--pnid:68BND0HIGTZPHRDMnsGUXQ-->打开来源页</a><button class="btn pass small" id="lbPass" data-act="pass" hidden>✓ 通过</button><button class="btn rej small" id="lbReject" data-act="reject" hidden>✗ 剔除</button><button class="btn ghost small" id="lbFav" data-favid="">☆ 收藏</button><button class="btn ghost small" id="lbNext">下一条待审核 →</button></div>
     </div>
+  </div>
+</div>
+
+<div class="modal" hidden id="manualModal">
+  <div class="mm-back" data-close></div>
+  <div class="mm-body">
+    <h2>📥 手动录入 / 导入素材</h2>
+    <div class="mm-sub">把「书签采集器」导出的 JSON 拖进来，或粘贴后点导入。支持单条或数组。</div>
+    <div class="drop" id="mmDrop">把 .json 文件拖到这里，或 <label style="color:#a96a26;cursor:pointer;text-decoration:underline">点击选择<input id="mmFile" type="file" accept=".json,application/json" multiple hidden></label></div>
+    <textarea id="mmText" placeholder='粘贴 JSON，例如：[{"title":"...","source_url":"https://...","img_remote":"https://...","holiday":"万圣节"}]'></textarea>
+    <div class="mm-actions">
+      <button class="btn primary small" id="mmImport">导入</button>
+      <button class="btn ghost small" id="mmClear">清空输入</button>
+      <button class="btn ghost small" data-close>关闭</button>
+    </div>
+    <div class="mm-msg" id="mmMsg"></div>
+    <div class="mm-tip">说明：手动录入的条目保存在你本机浏览器（刷新不丢，换浏览器/清缓存会丢）。想并入共享素材库，请点「导出审核结果」旁的思路——或把导出的 JSON 交给管理员写入文件。<br>字段可省略，系统会自动补：节日/类型按标题识别，未识别的归为「未分类」；图片用 <code>img_remote</code> 远程链接（真实浏览器中正常显示）。</div>
   </div>
 </div>
 
@@ -586,6 +618,79 @@ function renderReviewStat(){
 var FAV_KEY="wb_fav_v1";
 function loadFavs(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY)||"[]"); }catch(e){ return []; } }
 function saveFavs(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a)); }catch(e){} }
+
+/* ===== 手动录入 / 导入 ===== */
+var MANUAL_KEY="wb_manual_v1";
+function loadManual(){ try{return JSON.parse(localStorage.getItem(MANUAL_KEY)||"[]");}catch(e){return [];} }
+function saveManual(a){ localStorage.setItem(MANUAL_KEY,JSON.stringify(a)); }
+function detectHol(text){
+  text=(text||"").toLowerCase();
+  var M=[["万圣节",/halloween|pumpkin|spider|ghost|skull|bat|witch|skeleton/i],
+         ["感恩节",/thanksgiving|harvest|turkey|fall|autumn|thanks/i],
+         ["圣诞节",/christmas|xmas|santa|hanukkah|reindeer|snowflake|ornament|holiday/i],
+         ["复活节",/easter|egg|bunny|rabbit/i],
+         ["情人节",/valentine|love|heart/i],
+         ["独立日",/4th|fourth of july|patriotic|fireworks/i]];
+  for(var i=0;i<M.length;i++) if(M[i][1].test(text)) return M[i][0];
+  return "未分类";
+}
+function detectType(text){
+  text=(text||"").toLowerCase();
+  var M=[["盘子",/plate|dish|charger|dinnerware/i],["杯子",/mug|cup|tumbler|glass|stein/i],
+         ["纸巾",/napkin|towel|linen/i],["餐具",/cutlery|silverware|utensil|flatware|fork|spoon|knife/i],
+         ["桌布",/tablecloth|runner|placemat/i],["装饰",/decor|ornament|banner|garland|centerpiece/i]];
+  for(var i=0;i<M.length;i++) if(M[i][1].test(text)) return M[i][0];
+  return "素材图";
+}
+function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,"");}catch(e){return "";}}
+function normalizeManual(it,idx){
+  var img=it.img_remote||it.img||(it.img_gallery&&it.img_gallery[0])||"";
+  var title=it.title||"(未命名)";
+  return {
+    id:900000+idx, year:it.year||"2026",
+    holiday:it.holiday||detectHol(title+" "+(it.tags||"")),
+    platform:it.platform||"独立站",
+    design_type:it.design_type||detectType(title+" "+(it.tags||"")),
+    title:title, source_url:it.source_url||it.url||"",
+    brand:it.brand||hostOf(it.source_url||it.url||""), asin:it.asin||"",
+    price:it.price||"", evidence_type:it.evidence_type||"手动采集",
+    evidence_value:it.evidence_value||"", evidence_note:it.evidence_note||"书签采集",
+    collected_by:it.collected_by||"手动采集",
+    collected_at:it.collected_at||new Date().toISOString().slice(0,16).replace("T"," "),
+    tags:it.tags||"", note:it.note||"", favorite:false, file:"", thumb:img,
+    width:0,height:0,bytes:0,hash:"", holiday_reason:it.holiday_reason||"",
+    material:"",color:"",composition:"", review_status:"", tier:it.tier||0, heat:it.heat||0,
+    img:img, elements:it.elements||""
+  };
+}
+function ingestManual(text){
+  var parsed;
+  try{ parsed=JSON.parse(text); }catch(e){ return {ok:0,fail:0,err:"JSON 解析失败："+e.message}; }
+  var arr=Array.isArray(parsed)?parsed:[parsed];
+  if(!arr.length) return {ok:0,fail:0,err:"没有可导入的数据"};
+  var exist=loadManual();
+  var seen=new Set(exist.map(function(x){return x.source_url;}).concat(DATA.map(function(x){return x.source_url;})));
+  var added=0,skip=0;
+  arr.forEach(function(it){
+    var su=it.source_url||it.url||"";
+    if(su&&seen.has(su)){skip++;return;}
+    if(su)seen.add(su);
+    exist.push(normalizeManual(it,exist.length));
+    added++;
+  });
+  saveManual(exist);
+  DATA=DATA.concat(exist.slice(exist.length-added));
+  buildScope(); refresh();
+  return {ok:added,fail:skip,err:""};
+}
+function applyManual(){ var m=loadManual(); if(m.length){ DATA=DATA.concat(m); } }
+
+function showIngest(res){var m=$("#mmMsg");if(!m)return;if(res.err){m.style.color="#c0392b";m.textContent="⚠ "+res.err;}else{m.style.color="#1c6b52";m.textContent="✅ 成功导入 "+res.ok+" 条"+(res.fail?("，跳过重复 "+res.fail+" 条"):"")+"。可在「全部」中查看。";}}
+function readFiles(files){var arr=[].slice.call(files||[]);if(!arr.length){var m=$("#mmMsg");if(m)m.textContent="请选择或拖入 .json 文件";return;}var txt="";var left=arr.length;arr.forEach(function(f){var r=new FileReader();r.onload=function(e){txt+=e.target.result+"\n";left--;if(left===0)showIngest(ingestManual(txt));};r.onerror=function(){left--;if(left===0)showIngest(ingestManual(txt));};r.readAsText(f);});}
+
+function openManualModal(){ $("#manualModal").hidden=false; }
+function closeManualModal(){ $("#manualModal").hidden=true; }
+
 function applyFavs(){ var a=loadFavs(); DATA.forEach(function(d){ if(a.indexOf(String(d.id))>=0) d.favorite=true; }); }
 function favCount(){ var n=0; DATA.forEach(function(d){ if(d.favorite) n++; }); return n; }
 function toggleFav(id){
@@ -695,6 +800,12 @@ function bind(){
   if($("#btnExportReview"))$("#btnExportReview").addEventListener("click",exportReview);
   if($("#lbNext"))$("#lbNext").addEventListener("click",nextPending);
   $("#btnReset").addEventListener("click",resetFilters);
+  if($("#btnManualImport"))$("#btnManualImport").addEventListener("click",openManualModal);
+  if($("#mmImport"))$("#mmImport").addEventListener("click",function(){var ta=$("#mmText").value.trim();if(ta){showIngest(ingestManual(ta));return;}var f=$("#mmFile").files;if(f&&f.length){readFiles(f);}else{var m=$("#mmMsg");if(m)m.textContent="请粘贴 JSON 或选择文件";}});
+  if($("#mmClear"))$("#mmClear").addEventListener("click",function(){$("#mmText").value="";$("#mmFile").value="";var m=$("#mmMsg");if(m)m.textContent="";});
+  (function(){var dz=$("#mmDrop");if(!dz)return;dz.addEventListener("dragover",function(e){e.preventDefault();dz.classList.add("over");});dz.addEventListener("dragleave",function(){dz.classList.remove("over");});dz.addEventListener("drop",function(e){e.preventDefault();dz.classList.remove("over");readFiles(e.dataTransfer&&e.dataTransfer.files);});dz.addEventListener("click",function(){$("#mmFile").click();});})();
+  if($("#mmFile"))$("#mmFile").addEventListener("change",function(){if(this.files&&this.files.length)readFiles(this.files);});
+
   if($("#emptyReset"))$("#emptyReset").addEventListener("click",resetFilters);
   $$(".density button").forEach(function(b){b.addEventListener("click",function(){$$(".density button").forEach(function(x){x.classList.remove("active");});b.classList.add("active");state.density=b.dataset.density;renderGrid();});});
   document.addEventListener("keydown",function(e){
@@ -708,7 +819,7 @@ function bind(){
     if(e.key==="ArrowLeft"&&idx>0)openLightbox(state.items[idx-1].id);
   });
 }
-applyReview(); applyFavs(); buildScope(); bind(); renderReviewStat(); refresh();
+applyManual(); applyReview(); applyFavs(); buildScope(); bind(); renderReviewStat(); refresh();
 </script>
 </body>
 </html>

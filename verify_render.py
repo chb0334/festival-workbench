@@ -15,7 +15,9 @@ with sync_playwright() as pw:
     pg.wait_for_timeout(1500)
     r = pg.evaluate("""()=>{const c=[...document.querySelectorAll('.grid .card')];
       const i=[...document.querySelectorAll('.grid .card-img img')];
-      return {cards:c.length, broken:i.filter(x=>!x.complete||x.naturalWidth===0).length,
+      // 仅检查本地图片(images/ 开头)；远程 CDN 图在沙箱无法加载，不应误判为裂图
+      const local=i.filter(x=>/^(images\\/|file:\\/\\/.*\\/images\\/)/.test(x.getAttribute('src')||''));
+      return {cards:c.length, broken:local.filter(x=>!x.complete||x.naturalWidth===0).length,
               h:[...new Set(c.map(x=>Math.round(x.getBoundingClientRect().height)))],
               w:[...new Set(c.map(x=>Math.round(x.getBoundingClientRect().width)))]};}""")
     print("渲染校验:", r, "| JS错误:", errs[:3])
