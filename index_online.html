@@ -222,6 +222,17 @@ body.theme-spring{--accent:#c0392b;--accent-2:#b8860b;--accent-soft:#fdecec;--pa
 body.theme-spring .topbar{border-bottom-color:var(--accent)}
 body.theme-spring .summary-bar{border-left:4px solid var(--accent)}
 
+
+/* ===== 节日彩旗串 & 彩纸 ===== */
+.bunting{position:relative;height:34px;overflow:hidden;background:transparent;margin-top:-1px}
+.bunting-string{position:absolute;top:5px;left:0;right:0;height:2px;background:rgba(60,50,40,.28)}
+.bunting .flag{position:absolute;top:6px;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:18px solid #ccc;transform:translateX(-50%)}
+.bunting .flag:nth-child(even){margin-top:9px}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:60;overflow:hidden}
+#confetti .conf{position:absolute;top:-24px;border-radius:2px;opacity:.95;animation:confFall linear forwards}
+@keyframes confFall{0%{transform:translateY(-24px) rotate(0)}100%{transform:translateY(106vh) rotate(560deg)}}
+@media (prefers-reduced-motion:reduce){#confetti{display:none}}
+
 </style>
 </head>
 <body data-page-node-id="9pIBzOUN9iJms64mHHDAxR">
@@ -236,6 +247,8 @@ body.theme-spring .summary-bar{border-left:4px solid var(--accent)}
   </div>
   <div data-page-node-id="Dx3YDVmMqALnUUHDeRrWih" class="top-stats" id="topStats"></div>
 </header>
+<div class="bunting" id="bunting"></div>
+<div id="confetti"></div>
 
   <div data-page-node-id="gwB5Bdb2xNEyn6V3HE7iSw" class="scopebar">
     <div data-page-node-id="ug2P1SLDu5QVCNe40VUnU2" class="scope-group year-group"><span data-page-node-id="rX6dck8IvnJfUyBH3VpMUC" class="scope-label"><!--pnid:4B405bLWsA4eOjp2soFqf9-->年份</span><div data-page-node-id="nxVth93xIomOos6Wr0Nl3L" class="chips" id="yearChips"></div><div class="month-pick" data-page-node-id="mnMonthPick"><span class="scope-label sub"><!--pnid:mnMonth-->月份</span><select data-page-node-id="mnMonthSelect" id="monthSelect"><option value="">全部月份</option></select></div></div>
@@ -358,6 +371,38 @@ var HOL_THEME={
  "春节":{cls:"theme-spring",m:"\u{1F3EE}",decor:["\u{1F3EE}","\u{1F9E7}","\u{1F409}","\u{1F386}","\u{2728}"]},
  "元旦":{cls:"theme-spring",m:"\u{1F389}",decor:["\u{1F389}","\u{1F38A}","\u{2728}","\u{1F386}"]}
 };
+
+var THEME_COLORS={
+ "theme-halloween":["#ff7518","#7c3aed","#ffcf6b","#1f1233"],
+ "theme-thanksgiving":["#b45309","#9a3412","#e0a458","#7a3b12"],
+ "theme-christmas":["#c0392b","#15803d","#f4f4f4","#d4af37"],
+ "theme-spring":["#c0392b","#b8860b","#e23b2e","#ffd700"],
+ "":["#9a3412","#b45309","#1c6b52","#d97706"]
+};
+var _prevCls="";
+var _inited=false;
+function setBunting(t){
+ var b=$("#bunting"); if(!b) return;
+ var cols=THEME_COLORS[t?t.cls:""]||THEME_COLORS[""];
+ var n=24, W=100/n, html='<div class="bunting-string"></div>';
+ for(var i=0;i<n;i++){ html+='<i class="flag" style="left:'+(i+0.5)*W+'%;border-top-color:'+cols[i%cols.length]+'"></i>'; }
+ b.innerHTML=html;
+}
+function fireConfetti(t){
+ var c=$("#confetti"); if(!c) return;
+ var cols=THEME_COLORS[t.cls]||THEME_COLORS[""];
+ for(var i=0;i<64;i++){
+  var s=document.createElement("span"); s.className="conf";
+  s.style.left=(Math.random()*100)+"%";
+  s.style.background=cols[i%cols.length];
+  s.style.width=(6+Math.random()*8).toFixed(0)+"px";
+  s.style.height=(8+Math.random()*10).toFixed(0)+"px";
+  s.style.animationDuration=(1.4+Math.random()*1.3).toFixed(2)+"s";
+  s.style.animationDelay=(Math.random()*0.4).toFixed(2)+"s";
+  c.appendChild(s);
+  (function(el){ setTimeout(function(){ if(el&&el.parentNode) el.parentNode.removeChild(el); }, 3400); })(s);
+ }
+}
 function applyTheme(){
   var h=state.filters.holiday||"";
   var t=HOL_THEME[h];
@@ -366,6 +411,10 @@ function applyTheme(){
   var d=$("#decor"); if(!d){d=document.createElement("div");d.id="decor";document.body.appendChild(d);}
   d.innerHTML="";
   if(t){var n=t.decor.length*3;for(var i=0;i<n;i++){var s=document.createElement("span");s.textContent=t.decor[i%t.decor.length];s.style.left=(Math.random()*94)+"%";s.style.fontSize=(16+Math.random()*24).toFixed(0)+"px";s.style.animationDuration=(10+Math.random()*12).toFixed(1)+"s";s.style.animationDelay=(0-Math.random()*22).toFixed(1)+"s";s.style.opacity=(0.10+Math.random()*0.12).toFixed(2);d.appendChild(s);}}
+  setBunting(t);
+  if(t && _inited){ fireConfetti(t); }
+  _inited = true;
+  _prevCls = t? t.cls : "";
 }
 function refresh(){
   state.items = sortItems(DATA.filter(matches));
