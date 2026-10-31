@@ -18,7 +18,7 @@
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
 }
 *{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+html{background:var(--paper)}body{margin:0;padding:0;background:transparent;color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;position:relative}
 h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0;letter-spacing:.01em}
 a{color:var(--accent);text-decoration:none}
 button{font-family:inherit}
@@ -53,7 +53,7 @@ button{font-family:inherit}
 .sidebar{width:230px;flex-shrink:0;padding:16px 14px;border-right:1px solid var(--line);background:var(--surface);position:sticky;top:108px;align-self:flex-start;max-height:calc(100vh - 108px);overflow-y:auto}
 .searchbox{margin-bottom:14px}
 .searchbox input{width:100%;border:1px solid var(--line-2);border-radius:8px;padding:8px 11px;font-size:13px;background:var(--paper)}
-.searchbox input:focus{outline:2px solid #e7d3c2;border-color:var(--accent-2)}
+.searchbox input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent-2)}
 .filter-block{margin-bottom:16px}
 .filter-block h3{font-size:12px;color:var(--ink-3);margin-bottom:7px;text-transform:uppercase;letter-spacing:.04em}
 .checkline{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);margin:6px 0;cursor:pointer}
@@ -203,6 +203,25 @@ select{border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;font-si
   .evidence-card{color:var(--ink)}
   .evidence-card .ec-v{color:#5fc79e}
 }
+
+/* ===== 节日主题皮肤 ===== */
+#decor{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:-1}
+#decor span{position:absolute;top:-10%;animation:fall linear infinite;will-change:transform}
+@keyframes fall{0%{transform:translateY(-12%) rotate(0deg)}100%{transform:translateY(116vh) rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#decor{display:none}}
+body.theme-halloween{--accent:#ff7518;--accent-2:#7c3aed;--accent-soft:#fbeede;--paper:#f8f1e8;--paper-2:#efe4d4;--line:#e7ddcd;--line-2:#ddd0bc}
+body.theme-halloween .topbar{border-bottom-color:var(--accent)}
+body.theme-halloween .summary-bar{border-left:4px solid var(--accent)}
+body.theme-thanksgiving{--accent:#b45309;--accent-2:#9a3412;--accent-soft:#fbeede;--paper:#f8f1e6;--paper-2:#efe5d3;--line:#e8dec9;--line-2:#dcd0b9}
+body.theme-thanksgiving .topbar{border-bottom-color:var(--accent)}
+body.theme-thanksgiving .summary-bar{border-left:4px solid var(--accent)}
+body.theme-christmas{--accent:#c0392b;--accent-2:#15803d;--accent-soft:#eafaf0;--paper:#f3f6f4;--paper-2:#e6eee9;--line:#dce6df;--line-2:#cdddcf}
+body.theme-christmas .topbar{border-bottom-color:var(--accent)}
+body.theme-christmas .summary-bar{border-left:4px solid var(--accent)}
+body.theme-spring{--accent:#c0392b;--accent-2:#b8860b;--accent-soft:#fdecec;--paper:#fbf2f2;--paper-2:#f3e4e4;--line:#ecd9d9;--line-2:#e1cbcb}
+body.theme-spring .topbar{border-bottom-color:var(--accent)}
+body.theme-spring .summary-bar{border-left:4px solid var(--accent)}
+
 </style>
 </head>
 <body data-page-node-id="9pIBzOUN9iJms64mHHDAxR">
@@ -332,9 +351,25 @@ function matchesF(it, skip){
   return true;
 }
 function matches(it){ return matchesF(it, null); }
+var HOL_THEME={
+ "万圣节":{cls:"theme-halloween",m:"\u{1F383}",decor:["\u{1F987}","\u{1F383}","\u{1F47B}","\u{1F578}","\u{1F36C}","\u{1F56F}"]},
+ "感恩节":{cls:"theme-thanksgiving",m:"\u{1F983}",decor:["\u{1F342}","\u{1F983}","\u{1F383}","\u{1F33D}","\u{1F341}","\u{1F967}"]},
+ "圣诞节":{cls:"theme-christmas",m:"\u{1F384}",decor:["\u{2744}","\u{1F384}","\u{1F381}","\u{1F514}","\u{1F56F}","\u{2B50}"]},
+ "春节":{cls:"theme-spring",m:"\u{1F3EE}",decor:["\u{1F3EE}","\u{1F9E7}","\u{1F409}","\u{1F386}","\u{2728}"]},
+ "元旦":{cls:"theme-spring",m:"\u{1F389}",decor:["\u{1F389}","\u{1F38A}","\u{2728}","\u{1F386}"]}
+};
+function applyTheme(){
+  var h=state.filters.holiday||"";
+  var t=HOL_THEME[h];
+  document.body.className = t? t.cls : "";
+  var mk=document.querySelector(".brand .mark"); if(mk) mk.textContent = t? t.m : "\u{56FE}";
+  var d=$("#decor"); if(!d){d=document.createElement("div");d.id="decor";document.body.appendChild(d);}
+  d.innerHTML="";
+  if(t){var n=t.decor.length*3;for(var i=0;i<n;i++){var s=document.createElement("span");s.textContent=t.decor[i%t.decor.length];s.style.left=(Math.random()*94)+"%";s.style.fontSize=(16+Math.random()*24).toFixed(0)+"px";s.style.animationDuration=(10+Math.random()*12).toFixed(1)+"s";s.style.animationDelay=(0-Math.random()*22).toFixed(1)+"s";s.style.opacity=(0.10+Math.random()*0.12).toFixed(2);d.appendChild(s);}}
+}
 function refresh(){
   state.items = sortItems(DATA.filter(matches));
-  renderSummary(); renderElementChips(); renderGrid(); buildSidebar(); buildScope(); renderReviewStat();
+  renderSummary(); renderElementChips(); renderGrid(); buildSidebar(); buildScope(); renderReviewStat(); applyTheme();
 }
 function buildScope(){
   var curYear=new Date().getFullYear();
@@ -345,7 +380,7 @@ function buildScope(){
   var ybase=DATA.filter(function(d){return matchesF(d,"year");}).length;
   var hbase=DATA.filter(function(d){return matchesF(d,"holiday");}).length;
   $("#yearChips").innerHTML = ["全部"].concat(years).map(function(y){var v=y==="全部"?"":y;var n=y==="全部"?ybase:(ym[y]||0);return '<button class="chip '+(state.filters.year===v?"active":"")+'" data-scope="year" data-v="'+esc(v)+'">'+esc(y)+'<span class="n">'+n+'</span></button>';}).join("");
-  $("#holidayChips").innerHTML = ["全部"].concat(holidays).map(function(h){var v=h==="全部"?"":h;var n=h==="全部"?hbase:(hm[h]||0);return '<button class="chip '+(state.filters.holiday===v?"active":"")+'" data-scope="holiday" data-v="'+esc(v)+'">'+esc(h)+'<span class="n">'+n+'</span></button>';}).join("");
+  $("#holidayChips").innerHTML = ["全部"].concat(holidays).map(function(h){var v=h==="全部"?"":h;var n=h==="全部"?hbase:(hm[h]||0);var ht=HOL_THEME[h];return '<button class="chip '+(state.filters.holiday===v?"active":"")+'" data-scope="holiday" data-v="'+esc(v)+'">'+(ht&&ht.m?ht.m+" ":"")+esc(h)+'<span class="n">'+n+'</span></button>';}).join("");
   buildMonthOptions();
   }
 function buildMonthOptions(){
