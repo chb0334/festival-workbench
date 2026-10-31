@@ -90,11 +90,45 @@ ol{padding-left:20px}li{margin:8px 0}.warn{color:#a96a26}</style></head>
            "装饰":/decor|ornament|banner|garland|centerpiece/i};
   var holiday=det(HOL), design_type=det(DES);
 
+  // 2.5) 证据抓取：评分/评论数/畅销/销量/点赞/收藏/转发（电商页与社媒页通吃）
+  var bodyText=(document.body?document.body.innerText:"")+" "+(prod.description||"")+" "+(meta("description")||"");
+  var E={rating:null,reviews:null,sold:null,likes:null,saves:null,shares:null,bestseller:false};
+  if(prod.aggregateRating){
+    if(prod.aggregateRating.ratingValue!=null)E.rating=parseFloat(prod.aggregateRating.ratingValue);
+    if(prod.aggregateRating.reviewCount!=null)E.reviews=parseInt(prod.aggregateRating.reviewCount,10);
+  }
+  function num(s){var m=(s||"").match(/([\d,]+(?:\.\d+)?)/);return m?parseFloat(m[1].replace(/,/g,"")):null;}
+  var mR=bodyText.match(/([\d,]+)\s*(?:customer\s+)?reviews?/i); if(mR&&E.reviews==null)E.reviews=num(mR[1]);
+  var mRa=bodyText.match(/([\d.]+)\s*(?:out of|\/)\s*5\b/i)||bodyText.match(/rated\s*([\d.]+)/i); if(mRa&&E.rating==null)E.rating=parseFloat(mRa[1]);
+  var mS=bodyText.match(/([\d,]+)\s*(?:sold|orders?)/i); if(mS)E.sold=num(mS[1]);
+  var mL=bodyText.match(/([\d,]+)\s*(?:likes?|hearts?|favorites?)/i); if(mL)E.likes=num(mL[1]);
+  var mSv=bodyText.match(/([\d,]+)\s*(?:saves?|saved|wishlist|added to (?:their )?(?:registry|list|cart))/i); if(mSv)E.saves=num(mSv[1]);
+  var mSh=bodyText.match(/([\d,]+)\s*(?:shares?|reposts?|forwards?)/i); if(mSh)E.shares=num(mSh[1]);
+  E.bestseller=/bestseller|best seller|top rated|most loved|top seller|editor'?s pick|#\d+\s*(?:best|top)/i.test(bodyText)||!!document.querySelector('[class*="bestseller" i],[class*="best-seller" i],[class*="top-rated" i],[class*="top-seller" i]');
+  var signals=[];
+  if(E.reviews!=null)signals.push("评论 "+E.reviews+(E.rating!=null?(" · "+E.rating+"★"):""));
+  if(E.bestseller)signals.push("畅销标");
+  if(E.sold!=null)signals.push("销量 "+E.sold);
+  if(E.likes!=null)signals.push("点赞 "+E.likes);
+  if(E.saves!=null)signals.push("收藏 "+E.saves);
+  if(E.shares!=null)signals.push("转发 "+E.shares);
+  // 主证据类型（优先级：销量>畅销>评论>点赞>收藏>转发）
+  var evType="手动采集", evVal="", evNote="书签采集 @ "+hostOf(url);
+  if(E.sold!=null){evType="月销量";evVal=String(E.sold);}
+  else if(E.reviews!=null){evType="评论数";evVal=String(E.reviews);}
+  else if(E.likes!=null){evType="点赞";evVal=String(E.likes);}
+  else if(E.saves!=null){evType="收藏";evVal=String(E.saves);}
+  else if(E.shares!=null){evType="转发";evVal=String(E.shares);}
+  else if(E.bestseller){evType="Best Seller排名";evVal="是";}
+  if(signals.length)evNote="书签采集 @ "+hostOf(url)+" | "+signals.join(" · ");
+  function tierOf(v){return v==null?0:(v>=2000?5:v>=800?4:v>=200?3:v>=50?2:v>0?1:0);}
+  var tier=tierOf(Math.max(E.reviews||0,E.sold||0,E.likes||0,E.saves||0,E.shares||0))||(E.bestseller?3:0);
+
   var item={
     platform:"独立站", brand:brand, title:clean(title),
     holiday:holiday, design_type:design_type,
     source_url:url, price:price,
-    evidence_type:"手动采集", evidence_value:"", evidence_note:"书签采集 @ "+hostOf(url),
+    evidence_type:evType, evidence_value:evVal, evidence_note:evNote, tier:tier,
     img_remote:ogImgs[0]||"", img_gallery:ogImgs.slice(0,8),
     tags:sku, asin:"", collected_by:"手动采集",
     collected_at:new Date().toISOString().slice(0,16).replace("T"," ")
@@ -115,9 +149,11 @@ ol{padding-left:20px}li{margin:8px 0}.warn{color:#a96a26}</style></head>
   function btn(label,fn,col){var b=document.createElement("button");b.textContent=label;b.style.cssText=
     "margin:4px 4px 0 0;padding:6px 10px;border:0;border-radius:7px;cursor:pointer;font-size:12px;background:"+
     (col||"#c8843c")+";color:#1f1b16;font-weight:600";b.onclick=fn;return b;}
+  var evLine = evType==="手动采集" ? "证据：无（页面未暴露数据）" : ("证据："+evType+" "+evVal+(tier?(" · 强度 "+tier+"/5"):""));
   p.innerHTML='<div style="font-weight:700;margin-bottom:6px">✅ 已抓取：'+clean(title).slice(0,40)+
-    '</div><div style="opacity:.8;margin-bottom:8px">本次共收集 <b style="color:#ffcf8a">'+n+
-    '</b> 件 · 节日：'+(holiday||"未识别")+' · 类型：'+(design_type||"未识别")+'</div>';
+    '</div><div style="opacity:.8;margin-bottom:4px">本次共收集 <b style="color:#ffcf8a">'+n+
+    '</b> 件 · 节日：'+(holiday||"未识别")+' · 类型：'+(design_type||"未识别")+'</div>'+
+    '<div style="margin-bottom:8px;color:#ffcf8a">'+evLine+'</div>';
   var pre=document.createElement("pre");pre.style.cssText="background:#14110d;padding:8px;border-radius:8px;"+
     "max-height:160px;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:11px;margin:0 0 8px";
   pre.textContent=JSON.stringify(item,null,2);p.appendChild(pre);
